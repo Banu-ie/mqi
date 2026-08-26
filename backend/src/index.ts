@@ -1,15 +1,17 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "./lib/swagger";
 import { authRouter } from "./routes/auth";
+
+
 import { productsRouter } from "./routes/products";
 import { servicesRouter } from "./routes/services";
 import { eventsRouter } from "./routes/events";
 import { categoriesRouter } from "./routes/categories";
 import { contentRouter } from "./routes/content";
 import { contactRouter } from "./routes/contact";
-
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:8443")
@@ -20,6 +22,9 @@ app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/api/docs.json", (_req, res) => res.json(swaggerSpec));
 
 app.use("/api/auth", authRouter);
 app.use("/api/products", productsRouter);

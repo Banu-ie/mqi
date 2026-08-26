@@ -23,7 +23,8 @@ export default function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { listProducts(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi.")); }, []);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { listProducts(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi.")).finally(() => setLoading(false)); }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -188,6 +189,13 @@ export default function AdminProducts() {
       </div>
 
       {/* Table */}
+      {loading ? (
+        <p className="text-[#6B7A99] text-sm">Məhsullar yüklənir...</p>
+      ) : list.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#E4E9F4] p-10 text-center">
+          <p className="text-[#6B7A99] text-sm">Hələ məhsul yoxdur. "Məhsul əlavə et" düyməsi ilə ilkini əlavə edin.</p>
+        </div>
+      ) : (
       <div className="bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -241,6 +249,7 @@ export default function AdminProducts() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

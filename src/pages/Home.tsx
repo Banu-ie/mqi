@@ -8,6 +8,7 @@ import type { Product, Service, Event, SiteContent } from "../api/types";
 import ProductCard from "../components/ui/ProductCard";
 import ServiceCard from "../components/ui/ServiceCard";
 import EventCard from "../components/ui/EventCard";
+import { ErrorBanner } from "../components/ui/StatusStates";
 
 const features = [
   {
@@ -71,7 +72,14 @@ export default function Home() {
   const [services, setServices] = useState<Service[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [content, setContent] = useState<SiteContent>({ heroHeadline: "Mingəçevir Qadın İcması", heroSubtext: "Qadınların sosial və iqtisadi inkişafına, bacarıqlarının artırılmasına və yeni imkanlar qazanmasına dəstək oluruq.", aboutIntro: "Mingəçevir Qadın İcması 2025-ci ilin oktyabr ayında yaradılıb.", mission: "", phone: "", email: "", instagram: "@mingachevir_womens_community", address: "" });
-  useEffect(() => { listProducts().then(setProducts).catch(() => {}); listServices().then(setServices).catch(() => {}); listEvents().then(setEvents).catch(() => {}); getContent().then(setContent).catch(() => {}); }, []);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const loadDynamicSections = () => {
+    setDataError(null);
+    Promise.all([listProducts(), listServices(), listEvents(), getContent()])
+      .then(([p, s, e, c]) => { setProducts(p); setServices(s); setEvents(e); setContent(c); })
+      .catch(() => setDataError("Bəzi məlumatlar yüklənə bilmədi. Zəhmət olmasa yenidən cəhd edin."));
+  };
+  useEffect(loadDynamicSections, []);
   const featuredProducts = products.slice(0, 4);
   const featuredServices = services.slice(0, 4);
   const upcomingEvents = events.filter((e) => e.status === "upcoming").slice(0, 3);
@@ -210,6 +218,12 @@ export default function Home() {
         </div>
       </section>
 
+      {dataError && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+          <ErrorBanner message={dataError} onRetry={loadDynamicSections} />
+        </div>
+      )}
+
       {/* FEATURED PRODUCTS */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -232,11 +246,15 @@ export default function Home() {
               </svg>
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+          {!dataError && featuredProducts.length === 0 ? (
+            <p className="text-[#6B7A99] text-sm py-8">Hazırda göstərilən məhsul yoxdur, tezliklə əlavə olunacaq.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
           <div className="sm:hidden mt-8 text-center">
             <Link
               to="/mehsullar"
@@ -270,11 +288,15 @@ export default function Home() {
               </svg>
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredServices.map((s) => (
-              <ServiceCard key={s.id} service={s} />
-            ))}
-          </div>
+          {!dataError && featuredServices.length === 0 ? (
+            <p className="text-[#6B7A99] text-sm py-8">Hazırda göstərilən xidmət yoxdur, tezliklə əlavə olunacaq.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredServices.map((s) => (
+                <ServiceCard key={s.id} service={s} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -300,11 +322,15 @@ export default function Home() {
               </svg>
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {upcomingEvents.map((e) => (
-              <EventCard key={e.id} event={e} />
-            ))}
-          </div>
+          {!dataError && upcomingEvents.length === 0 ? (
+            <p className="text-[#6B7A99] text-sm py-8">Hazırda planlaşdırılan tədbir yoxdur, tezliklə əlavə olunacaq.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {upcomingEvents.map((e) => (
+                <EventCard key={e.id} event={e} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

@@ -11,7 +11,8 @@ export default function AdminServices() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { listServices(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Xidmətlər yüklənə bilmədi.")); }, []);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { listServices(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Xidmətlər yüklənə bilmədi.")).finally(() => setLoading(false)); }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -113,6 +114,13 @@ export default function AdminServices() {
         </button>
       </div>
 
+      {loading ? (
+        <p className="text-[#6B7A99] text-sm">Xidmətlər yüklənir...</p>
+      ) : list.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#E4E9F4] p-10 text-center">
+          <p className="text-[#6B7A99] text-sm">Hələ xidmət yoxdur. "Xidmət əlavə et" düyməsi ilə ilkini əlavə edin.</p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {list.map((s) => (
           <div key={s.id} className="bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden hover:shadow-md transition-shadow">
@@ -139,6 +147,7 @@ export default function AdminServices() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

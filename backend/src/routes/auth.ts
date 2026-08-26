@@ -12,6 +12,34 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Admin girişi (email + şifrə)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/LoginInput' }
+ *     responses:
+ *       200:
+ *         description: Giriş uğurludur, JWT token qaytarılır
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/LoginResponse' }
+ *       400:
+ *         description: Email və ya şifrə göndərilməyib
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       401:
+ *         description: Email və ya şifrə yanlışdır
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 authRouter.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -33,6 +61,22 @@ authRouter.post("/login", async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Cari daxil olmuş admin haqqında məlumat
+ *     tags: [Auth]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Admin məlumatı
+ *       401:
+ *         description: Token yoxdur, etibarsızdır və ya istifadəçi tapılmadı
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 authRouter.get("/me", requireAuth, async (req: AuthedRequest, res) => {
   const admin = Admins.findById(req.admin!.sub);
   if (!admin) return res.status(401).json({ error: "İstifadəçi tapılmadı." });

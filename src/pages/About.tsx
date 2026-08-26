@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getContent } from "../api/content";
 import type { SiteContent } from "../api/types";
+import { ErrorBanner } from "../components/ui/StatusStates";
 
 const directions = [
   "Qadınların peşə və bacarıqlarının inkişaf etdirilməsi",
@@ -14,7 +15,9 @@ const directions = [
 
 export default function About() {
   const [content, setContent] = useState<SiteContent | null>(null);
-  useEffect(() => { getContent().then(setContent).catch(() => {}); }, []);
+  const [error, setError] = useState<string | null>(null);
+  const loadContent = () => { setError(null); getContent().then(setContent).catch(() => setError("Bəzi məlumatlar yüklənə bilmədi. Zəhmət olmasa yenidən cəhd edin.")); };
+  useEffect(loadContent, []);
   return (
     <div className="pt-20">
       {/* Hero */}
@@ -35,6 +38,12 @@ export default function About() {
           </p>
         </div>
       </section>
+
+      {error && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+          <ErrorBanner message={error} onRetry={loadContent} />
+        </div>
+      )}
 
       {/* Intro */}
       <section className="py-24 bg-white">

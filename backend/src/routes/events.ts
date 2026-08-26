@@ -1,49 +1,80 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Events } from "../db/models";
+import { SiteContent } from "../db/models";
 import { requireAuth } from "../middleware/requireAuth";
 
+
+// We create and export the router from THIS file
 export const eventsRouter = Router();
 
-const eventSchema = z.object({
-  title: z.string().min(1, "Başlıq tələb olunur."),
-  date: z.string().min(1, "Tarix tələb olunur."),
-  location: z.string().min(1, "Məkan tələb olunur."),
-  shortDesc: z.string().min(1, "Qısa təsvir tələb olunur."),
-  fullDesc: z.string().default(""),
-  image: z.string().url("Şəkil düzgün URL olmalıdır.").or(z.literal("")),
-  status: z.enum(["upcoming", "past"]).default("upcoming"),
-});
-
+// Your actual routes go here
 eventsRouter.get("/", (req, res) => {
-  const status = req.query.status;
-  const filter = status === "upcoming" || status === "past" ? status : undefined;
-  res.json(Events.list(filter));
+  res.json({ message: "Products route working" });
+});
+export const contentRouter = Router();
+
+const contentSchema = z.object({
+  heroHeadline: z.string().min(1),
+  heroSubtext: z.string().min(1),
+  aboutIntro: z.string().min(1),
+  mission: z.string().min(1),
+  phone: z.string().min(1),
+  email: z.string().email(),
+  instagram: z.string().min(1),
+  address: z.string().min(1),
 });
 
-eventsRouter.get("/:id", (req, res) => {
-  const event = Events.get(req.params.id);
-  if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
-  res.json(event);
+/**
+ * @swagger
+ * /content:
+ *   get:
+ *     summary: Sayt məzmununu gətir (hero, haqqımızda, əlaqə məlumatları)
+ *     tags: [Content]
+ *     responses:
+ *       200:
+ *         description: Sayt məzmunu
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/SiteContent' }
+ *       404:
+ *         description: Məzmun tapılmadı
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+contentRouter.get("/", (_req, res) => {
+  const content = SiteContent.get();
+  if (!content) return res.status(404).json({ error: "Məzmun tapılmadı." });
+  res.json(content);
 });
 
-eventsRouter.post("/", requireAuth, (req, res) => {
-  const parsed = eventSchema.safeParse(req.body);
+/**
+ * @swagger
+ * /content:
+ *   put:
+ *     summary: Sayt məzmununu yenilə (yalnız admin)
+ *     tags: [Content]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/SiteContent' }
+ *     responses:
+ *       200:
+ *         description: Yenilənmiş məzmun
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/SiteContent' }
+ *       400:
+ *         description: Validasiya xətası
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+contentRouter.put("/", requireAuth, (req, res) => {
+  const parsed = contentSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const event = Events.create(parsed.data);
-  res.status(201).json(event);
-});
-
-eventsRouter.put("/:id", requireAuth, (req, res) => {
-  const parsed = eventSchema.partial().safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const event = Events.update(req.params.id, parsed.data);
-  if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
-  res.json(event);
-});
-
-eventsRouter.delete("/:id", requireAuth, (req, res) => {
-  const ok = Events.remove(req.params.id);
-  if (!ok) return res.status(404).json({ error: "Tədbir tapılmadı." });
-  res.status(204).send();
+  const content = SiteContent.update(parsed.data);
+  res.json(content);
 });
