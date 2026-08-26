@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import MqiLogo from "../branding/MqiLogo";
 
 export default function Footer() {
   return (
@@ -7,19 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3B6FE0] to-[#7C5CFC] flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth={2}>
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" strokeLinecap="round"/>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2" strokeLinecap="round"/>
-                  <path d="M9 9h.01M15 9h.01" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div>
-                <div className="font-['DM_Serif_Display'] text-white text-base leading-tight">Mingəçevir</div>
-                <div className="text-[#7C5CFC] text-xs font-medium">Qadın İcması</div>
-              </div>
-            </div>
+            <div className="mb-5"><MqiLogo light /></div>
             <p className="text-[#8896B0] text-sm leading-relaxed max-w-xs">
               Qadınların sosial və iqtisadi inkişafına, bacarıqlarının artırılmasına və yeni imkanlar qazanmasına dəstək oluruq.
             </p>

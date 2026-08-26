@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import MqiLogo from "../branding/MqiLogo";
 
 const navLinks = [
   { to: "/", label: "Ana səhifə" },
@@ -35,17 +36,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3B6FE0] to-[#7C5CFC] flex items-center justify-center shadow-md">
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth={2}>
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" strokeLinecap="round"/>
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" strokeLinecap="round"/>
-                <path d="M9 9h.01M15 9h.01" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div className="hidden sm:block">
-              <div className="font-['DM_Serif_Display'] text-[#1A2540] text-sm leading-tight font-semibold">Mingəçevir</div>
-              <div className="text-[#7C5CFC] text-xs font-medium leading-tight">Qadın İcması</div>
-            </div>
+            <MqiLogo />
           </Link>
 
           {/* Desktop nav */}
