@@ -31,7 +31,15 @@ async function main() {
     ["Əl işi bilərzik", 15, "Aksesuarlar", "Muncuq və iplikdən hazırlanan əl işi bilərzik."],
   ] as const;
   for (const [name, price, category, shortDesc] of products) {
-    Products.create({ name, price, category, shortDesc, fullDesc: shortDesc, image: "", status: "active" });
+    const images: Record<string, string> = {
+      "Əl toxunması xalça": "https://images.unsplash.com/photo-1534413340928-7bd74b65196f?w=600&h=500&fit=crop&auto=format",
+      "Tikilmiş kənd köynəyi": "https://images.unsplash.com/photo-1608793733118-ee3f16002251?w=600&h=500&fit=crop&auto=format",
+      "Toxunma çanta": "https://images.unsplash.com/photo-1722957533029-6b62a3826d05?w=600&h=500&fit=crop&auto=format",
+      "Naxışlı skarf": "https://images.unsplash.com/photo-1770232303925-b6975e83c3fa?w=600&h=500&fit=crop&auto=format",
+      "Dekorativ yastıq üzü": "https://images.unsplash.com/photo-1763733593326-758b2271d725?w=600&h=500&fit=crop&auto=format",
+      "Əl işi bilərzik": "https://images.unsplash.com/photo-1544031089-296448e3ebfa?w=600&h=500&fit=crop&auto=format",
+    };
+    Products.create({ name, price, category, shortDesc, fullDesc: shortDesc, image: images[name], status: "active" });
   }
 
   db.prepare("DELETE FROM services").run();
@@ -43,7 +51,14 @@ async function main() {
     ["Psixoloji sessiyalar", "Peşəkar psixoloq dəstəyi ilə şəxsi inkişaf, stress idarəetmə və özünüifadə."],
   ] as const;
   for (const [name, description] of services) {
-    Services.create({ name, description, fullDesc: description, image: "", forWhom: "Qadınlar üçün.", benefits: [], status: "active" });
+    const images: Record<string, string> = {
+      "Dərzilik xidməti": "https://images.unsplash.com/photo-1457972657980-4c9fddebec8d?w=600&h=450&fit=crop&auto=format",
+      "Toxuculuq": "https://images.unsplash.com/photo-1763733593326-758b2271d725?w=600&h=450&fit=crop&auto=format",
+      "Peşə və bacarıq təlimləri": "https://images.unsplash.com/photo-1618587194716-40490bdba417?w=600&h=450&fit=crop&auto=format",
+      "Sahibkarlıq və biznes təlimləri": "https://images.unsplash.com/photo-1590929936124-b30012ff94ab?w=600&h=450&fit=crop&auto=format",
+      "Psixoloji sessiyalar": "https://images.unsplash.com/photo-1596939082030-301c0d17b5b3?w=600&h=450&fit=crop&auto=format",
+    };
+    Services.create({ name, description, fullDesc: description, image: images[name], forWhom: "Qadınlar üçün.", benefits: [], status: "active" });
   }
 
   db.prepare("DELETE FROM events").run();
@@ -56,7 +71,14 @@ async function main() {
   ] as const;
   for (const [title, date, location, shortDesc] of events) {
     const status = date < "2026-01-01" ? "past" : "upcoming";
-    Events.create({ title, date, location, shortDesc, fullDesc: shortDesc, image: "", status });
+    const images: Record<string, string> = {
+      "Əl işlərinin sərgi-satışı": "https://images.unsplash.com/photo-1770232303925-b6975e83c3fa?w=800&h=500&fit=crop&auto=format",
+      "Sahibkarlıq mövzusunda seminar": "https://images.unsplash.com/photo-1590929936124-b30012ff94ab?w=800&h=500&fit=crop&auto=format",
+      "Dərzilik masterklası": "https://images.unsplash.com/photo-1618587194716-40490bdba417?w=800&h=500&fit=crop&auto=format",
+      "İcmanın açılış tədbirı": "https://images.unsplash.com/photo-1783853855829-684167740ed8?w=800&h=500&fit=crop&auto=format",
+      "Psixoloji inkişaf sessiyası": "https://images.unsplash.com/photo-1596939082030-301c0d17b5b3?w=800&h=500&fit=crop&auto=format",
+    };
+    Events.create({ title, date, location, shortDesc, fullDesc: shortDesc, image: images[title], status });
   }
 
   SiteContent.upsert({

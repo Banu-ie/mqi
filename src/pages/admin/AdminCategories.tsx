@@ -1,33 +1,39 @@
-import { useState } from "react";
-import { categories as initialCategories } from "../../data/mock";
-import type { Category } from "../../data/mock";
+import { useEffect, useState } from "react";
+import { createCategory, deleteCategory, listCategories, updateCategory } from "../../api/categories";
+import type { Category } from "../../api/types";
+import { ApiError } from "../../api/client";
 
 export default function AdminCategories() {
-  const [list, setList] = useState<Category[]>(initialCategories);
+  const [list, setList] = useState<Category[]>([]);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<"product" | "service">("product");
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { listCategories().then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Kateqoriyalar yüklənə bilmədi.")); }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newName.trim()) return;
-    setList((prev) => [...prev, { id: Date.now().toString(), name: newName.trim(), type: newType }]);
+    try { const category = await createCategory({ name: newName.trim(), type: newType }); setList((prev) => [...prev, category]); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Kateqoriya əlavə edilmədi."); return; }
     setNewName("");
     showToast("Kateqoriya əlavə edildi.");
   };
 
-  const handleEdit = (id: string) => {
+  const handleEdit = async (id: string) => {
     if (!editName.trim()) return;
-    setList((prev) => prev.map((c) => c.id === id ? { ...c, name: editName.trim() } : c));
+    try { const category = await updateCategory(id, { name: editName.trim() }); setList((prev) => prev.map((item) => item.id === id ? category : item)); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Kateqoriya yenilənmədi."); return; }
     setEditId(null);
     showToast("Kateqoriya yeniləndi.");
   };
 
-  const handleDelete = (id: string) => {
-    setList((prev) => prev.filter((c) => c.id !== id));
+  const handleDelete = async (id: string) => {
+    try { await deleteCategory(id); setList((prev) => prev.filter((c) => c.id !== id)); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Kateqoriya silinmədi."); return; }
     showToast("Kateqoriya silindi.");
   };
 
@@ -36,6 +42,7 @@ export default function AdminCategories() {
 
   return (
     <div>
+      {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</div>}
       {toast && <div className="fixed top-6 right-6 z-50 bg-[#1A2540] text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium">{toast}</div>}
 
       <div className="mb-8">

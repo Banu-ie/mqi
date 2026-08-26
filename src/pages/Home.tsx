@@ -1,5 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { products, services, events } from "../data/mock";
+import { listProducts } from "../api/products";
+import { listServices } from "../api/services";
+import { listEvents } from "../api/events";
+import { getContent } from "../api/content";
+import type { Product, Service, Event, SiteContent } from "../api/types";
 import ProductCard from "../components/ui/ProductCard";
 import ServiceCard from "../components/ui/ServiceCard";
 import EventCard from "../components/ui/EventCard";
@@ -62,6 +67,11 @@ const features = [
 ];
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [content, setContent] = useState<SiteContent>({ heroHeadline: "Mingəçevir Qadın İcması", heroSubtext: "Qadınların sosial və iqtisadi inkişafına, bacarıqlarının artırılmasına və yeni imkanlar qazanmasına dəstək oluruq.", aboutIntro: "Mingəçevir Qadın İcması 2025-ci ilin oktyabr ayında yaradılıb.", mission: "", phone: "", email: "", instagram: "@mingachevir_womens_community", address: "" });
+  useEffect(() => { listProducts().then(setProducts).catch(() => {}); listServices().then(setServices).catch(() => {}); listEvents().then(setEvents).catch(() => {}); getContent().then(setContent).catch(() => {}); }, []);
   const featuredProducts = products.slice(0, 4);
   const featuredServices = services.slice(0, 4);
   const upcomingEvents = events.filter((e) => e.status === "upcoming").slice(0, 3);
@@ -85,7 +95,7 @@ export default function Home() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 text-white/90 text-sm font-medium mb-8">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              Mingəçevir, Azərbaycan · 2025
+              {content.heroHeadline} · 2025
             </div>
             <h1 className="font-['DM_Serif_Display'] text-5xl sm:text-6xl lg:text-7xl text-white leading-tight mb-6">
               Mingəçevir
@@ -93,7 +103,7 @@ export default function Home() {
               <span className="text-[#A78BFA]">Qadın İcması</span>
             </h1>
             <p className="text-white/80 text-lg sm:text-xl leading-relaxed mb-10 max-w-xl">
-              Qadınların sosial və iqtisadi inkişafına, bacarıqlarının artırılmasına və yeni imkanlar qazanmasına dəstək oluruq.
+              {content.heroSubtext}
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
@@ -133,7 +143,7 @@ export default function Home() {
                 <span className="text-[#7C5CFC]">güclüyük</span>
               </h2>
               <p className="text-[#6B7A99] text-lg leading-relaxed mb-6">
-                Mingəçevir Qadın İcması 2025-ci ilin oktyabr ayında yaradılıb. İcmanın əsas məqsədi qadınların sosial və iqtisadi inkişafına dəstək olmaq, onların bilik və bacarıqlarını artırmaq, məşğulluq və sahibkarlıq imkanlarını genişləndirməkdir.
+                {content.aboutIntro}
               </p>
               <p className="text-[#6B7A99] leading-relaxed mb-8">
                 İcmamız qadınlara peşə öyrənmək, əl işləri hazırlamaq, bizneslərini qurmaq və şəxsi inkişaf üçün lazımi mühiti yaradır. Birlikdə biz daha güclüyük.

@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
@@ -22,6 +22,7 @@ import AdminServices from "./pages/admin/AdminServices";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminContent from "./pages/admin/AdminContent";
+import AdminContact from "./pages/admin/AdminContact";
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,14 +34,14 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedAdmin({ isLoggedIn, children }: { isLoggedIn: boolean; children: React.ReactNode }) {
-  if (!isLoggedIn) return <Navigate to="/admin/login" replace />;
+function ProtectedAdmin({ children }: { children: React.ReactNode }) {
+  const { admin, isLoading } = useAuth();
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFF]"><div className="w-8 h-8 border-2 border-[#3B6FE0] border-t-transparent rounded-full animate-spin" /></div>;
+  if (!admin) return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 }
 
-export default function App() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-
+function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
@@ -121,13 +122,13 @@ export default function App() {
         {/* Admin routes */}
         <Route
           path="/admin/login"
-          element={<AdminLogin onLogin={() => setIsAdminLoggedIn(true)} />}
+          element={<AdminLogin />}
         />
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedAdmin isLoggedIn={isAdminLoggedIn}>
-              <AdminLayout onLogout={() => setIsAdminLoggedIn(false)}>
+            <ProtectedAdmin>
+              <AdminLayout>
                 <AdminDashboard />
               </AdminLayout>
             </ProtectedAdmin>
@@ -136,8 +137,8 @@ export default function App() {
         <Route
           path="/admin/products"
           element={
-            <ProtectedAdmin isLoggedIn={isAdminLoggedIn}>
-              <AdminLayout onLogout={() => setIsAdminLoggedIn(false)}>
+            <ProtectedAdmin>
+              <AdminLayout>
                 <AdminProducts />
               </AdminLayout>
             </ProtectedAdmin>
@@ -146,8 +147,8 @@ export default function App() {
         <Route
           path="/admin/services"
           element={
-            <ProtectedAdmin isLoggedIn={isAdminLoggedIn}>
-              <AdminLayout onLogout={() => setIsAdminLoggedIn(false)}>
+            <ProtectedAdmin>
+              <AdminLayout>
                 <AdminServices />
               </AdminLayout>
             </ProtectedAdmin>
@@ -156,8 +157,8 @@ export default function App() {
         <Route
           path="/admin/events"
           element={
-            <ProtectedAdmin isLoggedIn={isAdminLoggedIn}>
-              <AdminLayout onLogout={() => setIsAdminLoggedIn(false)}>
+            <ProtectedAdmin>
+              <AdminLayout>
                 <AdminEvents />
               </AdminLayout>
             </ProtectedAdmin>
@@ -166,8 +167,8 @@ export default function App() {
         <Route
           path="/admin/categories"
           element={
-            <ProtectedAdmin isLoggedIn={isAdminLoggedIn}>
-              <AdminLayout onLogout={() => setIsAdminLoggedIn(false)}>
+            <ProtectedAdmin>
+              <AdminLayout>
                 <AdminCategories />
               </AdminLayout>
             </ProtectedAdmin>
@@ -176,9 +177,19 @@ export default function App() {
         <Route
           path="/admin/content"
           element={
-            <ProtectedAdmin isLoggedIn={isAdminLoggedIn}>
-              <AdminLayout onLogout={() => setIsAdminLoggedIn(false)}>
+            <ProtectedAdmin>
+              <AdminLayout>
                 <AdminContent />
+              </AdminLayout>
+            </ProtectedAdmin>
+          }
+        />
+        <Route
+          path="/admin/contact"
+          element={
+            <ProtectedAdmin>
+              <AdminLayout>
+                <AdminContact />
               </AdminLayout>
             </ProtectedAdmin>
           }
@@ -190,4 +201,8 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   );
+}
+
+export default function App() {
+  return <AuthProvider><AppRoutes /></AuthProvider>;
 }

@@ -1,5 +1,9 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { events } from "../data/mock";
+import { getEvent } from "../api/events";
+import { ApiError } from "../api/client";
+import type { Event } from "../api/types";
+import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -8,7 +12,14 @@ function formatDate(dateStr: string) {
 
 export default function EventDetail() {
   const { id } = useParams();
-  const event = events.find((e) => e.id === id);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  useEffect(() => { if (!id) return; getEvent(id).then(setEvent).catch((err) => { if (err instanceof ApiError && err.status === 404) setNotFound(true); else setError(err instanceof ApiError ? err.message : "Tədbir yüklənə bilmədi."); }).finally(() => setLoading(false)); }, [id]);
+
+  if (loading) return <div className="pt-20"><PageSpinner label="Tədbir yüklənir..." /></div>;
+  if (error) return <div className="pt-20"><ErrorBanner message={error} /></div>;
 
   if (!event) {
     return (

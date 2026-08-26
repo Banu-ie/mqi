@@ -12,9 +12,11 @@ import { contactRouter } from "./routes/contact";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:8443")
+  .split(",")
+  .map((origin) => origin.trim());
 
-app.use(cors({ origin: CORS_ORIGIN }));
+app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));

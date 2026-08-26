@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { products as initialProducts } from "../../data/mock";
-import type { Product } from "../../data/mock";
+import { useEffect, useState } from "react";
+import { createProduct, deleteProduct, listProducts, updateProduct, type ProductInput } from "../../api/products";
+import type { Product } from "../../api/types";
+import { ApiError } from "../../api/client";
 
-type FormState = Omit<Product, "id" | "createdAt">;
+type FormState = ProductInput;
 
 const emptyForm: FormState = {
   name: "",
@@ -15,12 +16,14 @@ const emptyForm: FormState = {
 };
 
 export default function AdminProducts() {
-  const [list, setList] = useState<Product[]>(initialProducts);
+  const [list, setList] = useState<Product[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { listProducts(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi.")); }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -34,28 +37,24 @@ export default function AdminProducts() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return;
-    if (editId) {
-      setList((prev) => prev.map((p) => (p.id === editId ? { ...p, ...form } : p)));
-      showToast("Məhsul uğurla yeniləndi.");
-    } else {
-      const newP: Product = { ...form, id: Date.now().toString(), createdAt: new Date().toISOString().split("T")[0] };
-      setList((prev) => [newP, ...prev]);
-      showToast("Məhsul uğurla əlavə edildi.");
-    }
+    try { if (editId) { await updateProduct(editId, form); showToast("Məhsul uğurla yeniləndi."); } else { await createProduct(form); showToast("Məhsul uğurla əlavə edildi."); } await listProducts(true).then(setList); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Məhsul yadda saxlanılmadı."); return; }
     setShowForm(false);
     setEditId(null);
   };
 
-  const handleDelete = (id: string) => {
-    setList((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (id: string) => {
+    try { await deleteProduct(id); setList((prev) => prev.filter((p) => p.id !== id)); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Məhsul silinmədi."); return; }
     setDeleteId(null);
     showToast("Məhsul silindi.");
   };
 
   return (
     <div>
+      {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</div>}
       {/* Toast */}
       {toast && (
         <div className="fixed top-6 right-6 z-50 bg-[#1A2540] text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium animate-pulse">

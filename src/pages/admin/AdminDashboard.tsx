@@ -1,5 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { products, services, events, categories } from "../../data/mock";
+import { listProducts } from "../../api/products";
+import { listServices } from "../../api/services";
+import { listEvents } from "../../api/events";
+import { listCategories } from "../../api/categories";
+import type { Product, Service, Event, Category } from "../../api/types";
+import { ErrorBanner, PageSpinner } from "../../components/ui/StatusStates";
 
 const activity = [
   { text: "Yeni məhsul əlavə edildi: Əl toxunması xalça", time: "2 saat əvvəl", icon: "🛍️" },
@@ -9,6 +15,15 @@ const activity = [
 ];
 
 export default function AdminDashboard() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { Promise.all([listProducts(true), listServices(true), listEvents(), listCategories()]).then(([p, s, e, c]) => { setProducts(p); setServices(s); setEvents(e); setCategories(c); }).catch((err) => setError(err instanceof Error ? err.message : "Dashboard yüklənmədi.")).finally(() => setLoading(false)); }, []);
+  if (loading) return <PageSpinner label="Dashboard yüklənir..." />;
+  if (error) return <ErrorBanner message={error} />;
   const stats = [
     {
       label: "Məhsullar",

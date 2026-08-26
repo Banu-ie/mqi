@@ -1,10 +1,22 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { products } from "../data/mock";
+import { getProduct, listProducts } from "../api/products";
+import { ApiError } from "../api/client";
+import type { Product } from "../api/types";
 import ProductCard from "../components/ui/ProductCard";
+import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const product = products.find((p) => p.id === id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [related, setRelated] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  useEffect(() => { if (!id) return; setLoading(true); setError(null); getProduct(id).then(setProduct).then(() => listProducts()).then(setRelated).catch((err) => { if (err instanceof ApiError && err.status === 404) setNotFound(true); else setError(err instanceof ApiError ? err.message : "Məhsul yüklənə bilmədi."); }).finally(() => setLoading(false)); }, [id]);
+
+  if (loading) return <div className="pt-20"><PageSpinner label="Məhsul yüklənir..." /></div>;
+  if (error) return <div className="pt-20"><ErrorBanner message={error} /></div>;
 
   if (!product) {
     return (
@@ -17,8 +29,8 @@ export default function ProductDetail() {
     );
   }
 
-  const related = products.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 3);
-  const fallbackRelated = products.filter((p) => p.id !== product.id).slice(0, 3);
+  const sameCategory = related.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 3);
+  const fallbackRelated = related.filter((p) => p.id !== product.id).slice(0, 3);
 
   return (
     <div className="pt-20 bg-[#F8FAFF] min-h-screen">
@@ -104,7 +116,7 @@ export default function ProductDetail() {
           <div className="mt-16">
             <h2 className="font-['DM_Serif_Display'] text-3xl text-[#1A2540] mb-8">Oxşar məhsullar</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(related.length > 0 ? related : fallbackRelated).map((p) => (
+              {(sameCategory.length > 0 ? sameCategory : fallbackRelated).map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>

@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getContent, updateContent } from "../../api/content";
+import type { SiteContent } from "../../api/types";
+import { ApiError } from "../../api/client";
 
 const initialContent = {
   heroHeadline: "Mingəçevir Qadın İcması",
@@ -12,17 +15,22 @@ const initialContent = {
 };
 
 export default function AdminContent() {
-  const [content, setContent] = useState(initialContent);
+  const [content, setContent] = useState<SiteContent>(initialContent);
   const [saved, setSaved] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"homepage" | "about" | "contact">("homepage");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { getContent().then(setContent).catch((err) => setError(err instanceof ApiError ? err.message : "Məzmun yüklənmədi.")).finally(() => setLoading(false)); }, []);
 
-  const handleSave = () => {
-    setSaved("Məzmun uğurla yadda saxlandı.");
-    setTimeout(() => setSaved(null), 3000);
+  const handleSave = async () => {
+    try { const updated = await updateContent(content); setContent(updated); setSaved("Məzmun uğurla yadda saxlandı."); setTimeout(() => setSaved(null), 3000); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Məzmun yadda saxlanılmadı."); }
   };
 
   return (
     <div>
+      {loading && <div className="mb-4 text-sm text-[#6B7A99]">Məzmun yüklənir...</div>}
+      {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</div>}
       {saved && <div className="fixed top-6 right-6 z-50 bg-green-600 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium">{saved}</div>}
 
       <div className="mb-8">
@@ -111,7 +119,7 @@ export default function AdminContent() {
               <div key={key}>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">{label}</label>
                 <input
-                  value={(content as Record<string, string>)[key]}
+                  value={(content as unknown as Record<string, string>)[key]}
                   onChange={(e) => setContent({ ...content, [key]: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 focus:border-[#3B6FE0]"
                 />

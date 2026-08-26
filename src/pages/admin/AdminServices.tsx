@@ -1,14 +1,17 @@
-import { useState } from "react";
-import { services as initialServices } from "../../data/mock";
-import type { Service } from "../../data/mock";
+import { useEffect, useState } from "react";
+import { createService, deleteService, listServices, updateService, type ServiceInput } from "../../api/services";
+import type { Service } from "../../api/types";
+import { ApiError } from "../../api/client";
 
 export default function AdminServices() {
-  const [list, setList] = useState<Service[]>(initialServices);
+  const [list, setList] = useState<Service[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", fullDesc: "", image: "", forWhom: "", benefits: "", status: "active" as "active" | "inactive" });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { listServices(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Xidmətlər yüklənə bilmədi.")); }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -21,27 +24,25 @@ export default function AdminServices() {
     setEditId(s.id); setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) return;
     const benefitsArr = form.benefits.split("\n").filter(Boolean);
-    if (editId) {
-      setList((prev) => prev.map((s) => s.id === editId ? { ...s, ...form, benefits: benefitsArr } : s));
-      showToast("Xidmət uğurla yeniləndi.");
-    } else {
-      setList((prev) => [{ id: Date.now().toString(), ...form, benefits: benefitsArr }, ...prev]);
-      showToast("Xidmət uğurla əlavə edildi.");
-    }
+    const input: ServiceInput = { ...form, benefits: benefitsArr };
+    try { if (editId) { await updateService(editId, input); showToast("Xidmət uğurla yeniləndi."); } else { await createService(input); showToast("Xidmət uğurla əlavə edildi."); } await listServices(true).then(setList); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Xidmət yadda saxlanılmadı."); return; }
     setShowForm(false);
   };
 
-  const handleDelete = (id: string) => {
-    setList((prev) => prev.filter((s) => s.id !== id));
+  const handleDelete = async (id: string) => {
+    try { await deleteService(id); setList((prev) => prev.filter((s) => s.id !== id)); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Xidmət silinmədi."); return; }
     setDeleteId(null);
     showToast("Xidmət silindi.");
   };
 
   return (
     <div>
+      {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</div>}
       {toast && <div className="fixed top-6 right-6 z-50 bg-[#1A2540] text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium">{toast}</div>}
 
       {deleteId && (

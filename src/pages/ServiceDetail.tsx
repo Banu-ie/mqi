@@ -1,9 +1,20 @@
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { services } from "../data/mock";
+import { getService } from "../api/services";
+import { ApiError } from "../api/client";
+import type { Service } from "../api/types";
+import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
 export default function ServiceDetail() {
   const { id } = useParams();
-  const service = services.find((s) => s.id === id);
+  const [service, setService] = useState<Service | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  useEffect(() => { if (!id) return; getService(id).then(setService).catch((err) => { if (err instanceof ApiError && err.status === 404) setNotFound(true); else setError(err instanceof ApiError ? err.message : "Xidmət yüklənə bilmədi."); }).finally(() => setLoading(false)); }, [id]);
+
+  if (loading) return <div className="pt-20"><PageSpinner label="Xidmət yüklənir..." /></div>;
+  if (error) return <div className="pt-20"><ErrorBanner message={error} /></div>;
 
   if (!service) {
     return (

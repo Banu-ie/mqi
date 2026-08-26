@@ -1,3 +1,7 @@
+import { useEffect, useState } from "react";
+import { getContent } from "../api/content";
+import type { SiteContent } from "../api/types";
+
 const directions = [
   "Qadınların peşə və bacarıqlarının inkişaf etdirilməsi",
   "Qadınların məşğulluq imkanlarının artırılması",
@@ -9,6 +13,8 @@ const directions = [
 ];
 
 export default function About() {
+  const [content, setContent] = useState<SiteContent | null>(null);
+  useEffect(() => { getContent().then(setContent).catch(() => {}); }, []);
   return (
     <div className="pt-20">
       {/* Hero */}
@@ -25,7 +31,7 @@ export default function About() {
             Haqqımızda
           </h1>
           <p className="text-white/75 text-xl max-w-2xl mx-auto">
-            Mingəçevir Qadın İcması 2025-ci ilin oktyabr ayında yaradılıb.
+            {content?.heroHeadline || "Mingəçevir Qadın İcması"} 2025-ci ilin oktyabr ayında yaradılıb.
           </p>
         </div>
       </section>
@@ -39,7 +45,7 @@ export default function About() {
                 Missiyamız
               </h2>
               <p className="text-[#6B7A99] text-lg leading-relaxed mb-6">
-                Qadınların sosial və iqtisadi inkişafına dəstək olmaq, onların bilik və bacarıqlarını artırmaq, məşğulluq və sahibkarlıq imkanlarını genişləndirmək.
+                {content?.mission || "Qadınların sosial və iqtisadi inkişafına dəstək olmaq, onların bilik və bacarıqlarını artırmaq, məşğulluq və sahibkarlıq imkanlarını genişləndirmək."}
               </p>
               <p className="text-[#6B7A99] leading-relaxed">
                 İcmamız qadınlara sadəcə dəstək olmaqla kifayətlənmir — onlara öz həyatlarında müstəqil seçimlər etmək üçün lazımi bilik, bacarıq və güvən verir. Biz inanırıq ki, hər qadın böyük potensialına malikdir, ona sadəcə doğru mühit lazımdır.

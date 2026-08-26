@@ -1,9 +1,16 @@
-import { useState } from "react";
-import { events } from "../data/mock";
+import { useEffect, useState } from "react";
+import { listEvents } from "../api/events";
+import { ApiError } from "../api/client";
+import type { Event } from "../api/types";
 import EventCard from "../components/ui/EventCard";
+import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
 export default function Events() {
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { listEvents().then(setEvents).catch((err) => setError(err instanceof ApiError ? err.message : "Tədbirlər yüklənə bilmədi.")).finally(() => setLoading(false)); }, []);
 
   const filtered = events.filter((e) => e.status === tab);
 
@@ -47,7 +54,7 @@ export default function Events() {
             </button>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? <PageSpinner label="Tədbirlər yüklənir..." /> : error ? <ErrorBanner message={error} /> : filtered.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-16 h-16 rounded-full bg-[#EEF3FD] flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-[#6B7A99]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

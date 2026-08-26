@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
   {
@@ -57,20 +58,19 @@ const navItems = [
       </svg>
     ),
   },
+  { to: "/admin/contact", label: "Mesajlar", icon: <span className="w-5 h-5 flex items-center justify-center text-xs">✉</span> },
 ];
 
-interface Props {
-  children: React.ReactNode;
-  onLogout: () => void;
-}
+interface Props { children: React.ReactNode; }
 
-export default function AdminLayout({ children, onLogout }: Props) {
+export default function AdminLayout({ children }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { admin, logout } = useAuth();
 
   const handleLogout = () => {
-    onLogout();
+    logout();
     navigate("/admin/login");
   };
 
@@ -190,11 +190,11 @@ export default function AdminLayout({ children, onLogout }: Props) {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#3B6FE0] to-[#7C5CFC] flex items-center justify-center text-white text-sm font-bold">
-                A
+                {(admin?.name || "A").charAt(0).toUpperCase()}
               </div>
               <div className="hidden sm:block">
-                <div className="text-xs font-semibold text-[#1A2540]">Admin</div>
-                <div className="text-xs text-[#6B7A99]">admin@mqicma.az</div>
+                <div className="text-xs font-semibold text-[#1A2540]">{admin?.name || "Admin"}</div>
+                <div className="text-xs text-[#6B7A99]">{admin?.email || ""}</div>
               </div>
             </div>
           </div>

@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { products } from "../data/mock";
+import { useEffect, useMemo, useState } from "react";
+import { listProducts } from "../api/products";
+import { listCategories } from "../api/categories";
+import { ApiError } from "../api/client";
+import type { Product, Category } from "../api/types";
 import ProductCard from "../components/ui/ProductCard";
+import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
-const allCategories = ["Hamısı", "Əl işləri", "Geyim", "Çantalar", "Aksesuarlar", "Digər"];
+const allCategoryLabel = "Hamısı";
 
 export default function Products() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("Hamısı");
+  const [category, setCategory] = useState(allCategoryLabel);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = () => { setLoading(true); setError(null); Promise.all([listProducts(), listCategories("product")]).then(([items, cats]) => { setProducts(items); setCategories(cats); }).catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi.")).finally(() => setLoading(false)); };
+  useEffect(load, []);
+  const allCategories = useMemo(() => [allCategoryLabel, ...categories.map((item) => item.name)], [categories]);
 
   const filtered = products.filter((p) => {
-    const matchCat = category === "Hamısı" || p.category === category;
+    const matchCat = category === allCategoryLabel || p.category === category;
     const matchSearch =
       search === "" ||
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,6 +45,7 @@ export default function Products() {
 
       <section className="py-12 bg-[#F8FAFF] min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {loading ? <PageSpinner label="Məhsullar yüklənir..." /> : error ? <ErrorBanner message={error} onRetry={load} /> : <>
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
             <div className="relative flex-1">
@@ -88,6 +100,7 @@ export default function Products() {
               </div>
             </>
           )}
+          </>}
         </div>
       </section>
     </div>

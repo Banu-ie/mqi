@@ -1,33 +1,31 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { ApiError } from "../../api/client";
 
-interface Props {
-  onLogin: () => void;
-}
-
-export default function AdminLogin({ onLogin }: Props) {
+export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!email.trim()) { setError("Email tələb olunur."); return; }
     if (!password.trim()) { setError("Şifrə tələb olunur."); return; }
 
     setLoading(true);
-    setTimeout(() => {
-      if (email === "admin@mqicma.az" && password === "REDACTED") {
-        onLogin();
-        navigate("/admin/dashboard");
-      } else {
-        setError("Email və ya şifrə yanlışdır.");
-        setLoading(false);
-      }
-    }, 800);
+    try {
+      await login(email, password);
+      navigate("/admin/dashboard");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Email və ya şifrə yanlışdır.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

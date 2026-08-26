@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { sendContactMessage } from "../api/contact";
+import { ApiError } from "../api/client";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -13,7 +17,7 @@ export default function Contact() {
     return e;
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     const e = validate();
     if (Object.keys(e).length > 0) {
@@ -21,8 +25,11 @@ export default function Contact() {
       return;
     }
     setErrors({});
-    setSuccess(true);
-    setForm({ name: "", phone: "", message: "" });
+    setSubmitError(null);
+    setSubmitting(true);
+    try { await sendContactMessage(form); setSuccess(true); setForm({ name: "", phone: "", message: "" }); }
+    catch (err) { setSubmitError(err instanceof ApiError ? err.message : "Mesaj göndərilə bilmədi."); }
+    finally { setSubmitting(false); }
   };
 
   const contactItems = [
@@ -143,6 +150,7 @@ export default function Contact() {
                     <p className="text-green-700 text-sm font-medium">Mesajınız uğurla göndərildi. Ən qısa müddətdə sizinlə əlaqə saxlayacağıq!</p>
                   </div>
                 )}
+                {submitError && <p className="mb-4 text-sm text-red-600">{submitError}</p>}
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
@@ -186,9 +194,10 @@ export default function Contact() {
                   </div>
                   <button
                     type="submit"
+                    disabled={submitting}
                     className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
                   >
-                    Göndər
+                    {submitting ? "Göndərilir..." : "Göndər"}
                   </button>
                 </form>
               </div>

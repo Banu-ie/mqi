@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import type { Service } from "../../data/mock";
+import type { Service } from "../../api/types";
 
 interface Props {
   service: Service;

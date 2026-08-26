@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import type { Event } from "../../data/mock";
+import type { Event } from "../../api/types";
 
 interface Props {
   event: Event;
