@@ -1,15 +1,54 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Products } from "../db/models";
+import { Products, Services } from "../db/models";
 import { requireAuth } from "../middleware/requireAuth";
 
 
 // We create and export the router from THIS file
 export const servicesRouter = Router();
 
-// Your actual routes go here
+const serviceSchema = z.object({
+  name: z.string().min(1, "Xidmət adı tələb olunur."),
+  description: z.string().min(1, "Qısa təsvir tələb olunur."),
+  fullDesc: z.string().default(""),
+  image: z.string().url("Şəkil düzgün URL olmalıdır.").or(z.literal("")),
+  forWhom: z.string().default(""),
+  benefits: z.array(z.string()).default([]),
+  status: z.enum(["active", "inactive"]).default("active"),
+});
+
+function serializeService<T extends { benefits: string }>(service: T) {
+  return { ...service, benefits: JSON.parse(service.benefits) as string[] };
+}
+
 servicesRouter.get("/", (req, res) => {
-  res.json({ message: "Products route working" });
+  const includeAll = req.query.all === "true";
+  res.json(Services.list(includeAll).map(serializeService));
+});
+
+servicesRouter.get("/:id", (req, res) => {
+  const service = Services.get(req.params.id);
+  if (!service) return res.status(404).json({ error: "Xidmət tapılmadı." });
+  res.json(serializeService(service));
+});
+
+servicesRouter.post("/", requireAuth, (req, res) => {
+  const parsed = serviceSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  res.status(201).json(serializeService(Services.create(parsed.data)));
+});
+
+servicesRouter.put("/:id", requireAuth, (req, res) => {
+  const parsed = serviceSchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  const service = Services.update(req.params.id, parsed.data);
+  if (!service) return res.status(404).json({ error: "Xidmət tapılmadı." });
+  res.json(serializeService(service));
+});
+
+servicesRouter.delete("/:id", requireAuth, (req, res) => {
+  if (!Services.remove(req.params.id)) return res.status(404).json({ error: "Xidmət tapılmadı." });
+  res.status(204).send();
 });
 export const productsRouter = Router();
 
