@@ -31,7 +31,7 @@ export default function Products() {
   return (
     <div className="pt-20">
       {/* Hero */}
-      <section className="py-16 bg-gradient-to-br from-[#1A2540] via-[#2D3B6B] to-[#3B6FE0]">
+      <section className="py-16 bg-gradient-to-br from-[#d98643] via-[#9e4996] to-[#8636a1]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/15 text-white/90 text-xs font-semibold mb-5 uppercase tracking-wider">
             Katalog

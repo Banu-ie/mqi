@@ -62,7 +62,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             <Link
               to="/elaqe"
-              className="hidden lg:inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5fd0b6] to-[#d9b06a] text-[#0b1f22] text-sm font-semibold shadow-[0_12px_28px_rgba(95,208,182,0.28)] hover:brightness-110 transition-all duration-200"
+              className="hidden lg:inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-[#ffffff] text-sm font-semibold  shadow-[0_12px_28px_rgba(95,208,182,0.28)] hover:brightness-110 transition-all duration-200"
             >
               Əlaqə
             </Link>

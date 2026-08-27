@@ -21,7 +21,7 @@ export default function About() {
   return (
     <div className="pt-20">
       {/* Hero */}
-      <section className="relative py-20 bg-gradient-to-br from-[#1A2540] via-[#2D3B6B] to-[#3B6FE0] overflow-hidden">
+      <section className="py-16 bg-gradient-to-br from-[#d98643] via-[#9e4996] to-[#8636a1]">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-10 left-10 w-64 h-64 rounded-full bg-[#7C5CFC] blur-3xl" />
           <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-[#3B6FE0] blur-3xl" />
