@@ -101,10 +101,6 @@ export default function Home() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
           <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 text-white/90 text-sm font-medium mb-8">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              {content.heroHeadline} · 2025
-            </div>
             <h1 className="font-['DM_Serif_Display'] text-5xl sm:text-6xl lg:text-7xl text-white leading-tight mb-6">
               Mingəçevir
               <br />

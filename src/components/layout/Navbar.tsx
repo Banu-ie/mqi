@@ -29,7 +29,9 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-[#E4E9F4]" : "bg-transparent"
+        scrolled
+          ? 'bg-[linear-gradient(180deg,rgba(7,30,32,0.8),rgba(7,30,32,0.3),rgba(7,30,32,0.05))] backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(4,13,15,0.12)]'
+          : 'bg-[linear-gradient(180deg,rgba(7,30,32,0.52),rgba(7,30,32,0.22),rgba(7,30,32,0))] backdrop-blur-sm border-b border-white/10'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -40,17 +42,15 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_30px_rgba(6,18,22,0.18)]">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                   location.pathname === link.to
-                    ? "text-[#3B6FE0] bg-[#EEF3FD]"
-                    : scrolled
-                    ? "text-[#1A2540] hover:text-[#3B6FE0] hover:bg-[#EEF3FD]"
-                    : "text-[#1A2540] hover:text-[#3B6FE0] hover:bg-white/70"
+                    ? "bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
+                    : "text-white/85 hover:text-white hover:bg-white/10"
                 }`}
               >
                 {link.label}
@@ -62,13 +62,13 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             <Link
               to="/elaqe"
-              className="hidden lg:inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white text-sm font-semibold shadow-md hover:shadow-lg hover:opacity-90 transition-all duration-200"
+              className="hidden lg:inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5fd0b6] to-[#d9b06a] text-[#0b1f22] text-sm font-semibold shadow-[0_12px_28px_rgba(95,208,182,0.28)] hover:brightness-110 transition-all duration-200"
             >
               Əlaqə
             </Link>
             <button
               onClick={() => setOpen(!open)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg text-[#1A2540] hover:bg-[#EEF3FD] transition-colors"
+              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg text-white hover:bg-white/10 transition-colors"
               aria-label="Menu"
             >
               {open ? (
@@ -87,7 +87,7 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       <div
-        className={`lg:hidden absolute top-full left-0 right-0 bg-white/98 backdrop-blur-md border-b border-[#E4E9F4] shadow-lg transition-all duration-300 overflow-hidden ${
+        className={`lg:hidden absolute top-full left-0 right-0 bg-[#0d292e]/95 backdrop-blur-xl border-b border-white/10 shadow-2xl transition-all duration-300 overflow-hidden ${
           open ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
         }`}
       >
@@ -98,8 +98,8 @@ export default function Navbar() {
               to={link.to}
               className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                 location.pathname === link.to
-                  ? "text-[#3B6FE0] bg-[#EEF3FD]"
-                  : "text-[#1A2540] hover:bg-[#F0F4FE]"
+                  ? "text-white bg-white/10"
+                  : "text-white/80 hover:bg-white/5"
               }`}
             >
               {link.label}
@@ -107,7 +107,7 @@ export default function Navbar() {
           ))}
           <Link
             to="/elaqe"
-            className="mt-2 px-4 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white text-sm font-semibold text-center"
+            className="mt-2 px-4 py-3 rounded-xl bg-gradient-to-r from-[#5fd0b6] to-[#d9b06a] text-[#0b1f22] text-sm font-semibold text-center"
           >
             Əlaqə saxlayın
           </Link>
