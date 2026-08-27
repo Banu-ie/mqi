@@ -15,7 +15,7 @@ export const contactRouter = Router();
 
 const messageSchema = z.object({
   name: z.string().min(1, "Ad tələb olunur."),
-  phone: z.string().min(1, "Telefon tələb olunur."),
+  phone: z.string().min(1, "Telefon tələb olunur.").refine((phone) => /^(?:\+994|00994|0)(?:10|12|18|20|21|22|23|24|25|26|33|35|36|50|51|55|60|70|77|99)\d{7}$/.test(phone.replace(/[\s()-]/g, "")), "Azərbaycan nömrəsini +994 50 123 45 67 formatında daxil edin."),
   message: z.string().min(1, "Mesaj tələb olunur."),
 });
 

@@ -8,11 +8,13 @@ export default function Contact() {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const phonePattern = /^(?:\+994|00994|0)(?:10|12|18|20|21|22|23|24|25|26|33|35|36|50|51|55|60|70|77|99)\d{7}$/;
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = "Bu sahə tələb olunur.";
     if (!form.phone.trim()) e.phone = "Bu sahə tələb olunur.";
+    else if (!phonePattern.test(form.phone.replace(/[\s()-]/g, ""))) e.phone = "Azərbaycan nömrəsini +994 50 123 45 67 formatında daxil edin.";
     if (!form.message.trim()) e.message = "Bu sahə tələb olunur.";
     return e;
   };
@@ -170,8 +172,10 @@ export default function Contact() {
                     <label className="block text-sm font-medium text-[#1A2540] mb-2">Telefon</label>
                     <input
                       type="tel"
+                      inputMode="tel"
+                      pattern="(?:\\+994|00994|0)(?:10|12|18|20|21|22|23|24|25|26|33|35|36|50|51|55|60|70|77|99)[0-9]{7}"
                       value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/[^0-9+()\s-]/g, "") })}
                       placeholder="+994 XX XXX XX XX"
                       className={`w-full px-4 py-3 rounded-xl border text-[#1A2540] placeholder-[#6B7A99] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 transition-all ${
                         errors.phone ? "border-red-400 bg-red-50" : "border-[#E4E9F4] focus:border-[#3B6FE0]"
@@ -195,7 +199,7 @@ export default function Contact() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
                   >
                     {submitting ? "Göndərilir..." : "Göndər"}
                   </button>

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import MqiLogo from "../branding/MqiLogo";
+import { listContactMessages } from "../../api/contact";
 
 const navItems = [
   {
@@ -69,6 +70,11 @@ export default function AdminLayout({ children }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
   const { admin, logout } = useAuth();
+  const [messageCount, setMessageCount] = useState(0);
+
+  useEffect(() => {
+    listContactMessages().then((messages) => setMessageCount(messages.length)).catch(() => setMessageCount(0));
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -99,7 +105,12 @@ export default function AdminLayout({ children }: Props) {
               }`}
             >
               {item.icon}
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.to === "/admin/contact" && messageCount > 0 && (
+                <span className="min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {messageCount > 99 ? "99+" : messageCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -172,12 +183,20 @@ export default function AdminLayout({ children }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#EEF3FD] flex items-center justify-center relative">
+            <Link
+              to="/admin/contact"
+              aria-label={messageCount > 0 ? `${messageCount} yeni mesaj` : "Mesaj bildirişləri"}
+              className="w-9 h-9 rounded-lg bg-[#EEF3FD] flex items-center justify-center relative hover:bg-[#E1E9FC] transition-colors"
+            >
               <svg className="w-5 h-5 text-[#3B6FE0]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
               </svg>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#7C5CFC]" />
-            </div>
+              {messageCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {messageCount > 99 ? "99+" : messageCount}
+                </span>
+              )}
+            </Link>
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#3B6FE0] to-[#7C5CFC] flex items-center justify-center text-white text-sm font-bold">
                 {(admin?.name || "A").charAt(0).toUpperCase()}
