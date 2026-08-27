@@ -80,7 +80,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-[#ffffff] font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
