@@ -100,7 +100,7 @@ export default function AdminLayout({ children }: Props) {
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                 active
-                  ? "bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white shadow-md"
+                  ? "bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-[#ffffff] text-sm font-semibold  shadow-[0_12px_28px_rgba(95,208,182,0.28)] hover:brightness-110 transition-all duration-200"
                   : "text-[#6B7A99] hover:bg-[#F0F4FE] hover:text-[#1A2540]"
               }`}
             >

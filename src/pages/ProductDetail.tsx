@@ -91,7 +91,7 @@ export default function ProductDetail() {
               <div className="flex flex-col sm:flex-row gap-3 mt-auto">
                 <Link
                   to="/elaqe"
-                  className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold text-center shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
+                  className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold text-center shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
                 >
                   Sifariş üçün əlaqə saxla
                 </Link>
