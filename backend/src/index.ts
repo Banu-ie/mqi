@@ -4,14 +4,12 @@ import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./lib/swagger";
 import { authRouter } from "./routes/auth";
-
-
-import { productsRouter } from "./routes/services";
+import { productsRouter } from "./routes/products";
 import { servicesRouter } from "./routes/services";
-import { eventsRouter } from "./routes/products";
-import { categoriesRouter } from "./routes/contact";
-import { contentRouter } from "./routes/events";
-import { contactRouter } from "./routes/content";
+import { eventsRouter } from "./routes/events";
+import { categoriesRouter } from "./routes/categories";
+import { contentRouter } from "./routes/content";
+import { contactRouter } from "./routes/contact";
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:8443")

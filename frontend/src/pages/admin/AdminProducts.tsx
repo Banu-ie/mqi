@@ -24,6 +24,8 @@ export default function AdminProducts() {
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   useEffect(() => { listProducts(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi.")).finally(() => setLoading(false)); }, []);
 
   const showToast = (msg: string) => {
@@ -31,19 +33,25 @@ export default function AdminProducts() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const openAdd = () => { setForm(emptyForm); setEditId(null); setShowForm(true); };
+  const openAdd = () => { setForm(emptyForm); setFormError(null); setEditId(null); setShowForm(true); };
   const openEdit = (p: Product) => {
     setForm({ name: p.name, price: p.price, category: p.category, shortDesc: p.shortDesc, fullDesc: p.fullDesc, image: p.image, status: p.status });
+    setFormError(null);
     setEditId(p.id);
     setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
-    try { if (editId) { await updateProduct(editId, form); showToast("Məhsul uğurla yeniləndi."); } else { await createProduct(form); showToast("Məhsul uğurla əlavə edildi."); } await listProducts(true).then(setList); }
-    catch (err) { setError(err instanceof ApiError ? err.message : "Məhsul yadda saxlanılmadı."); return; }
-    setShowForm(false);
-    setEditId(null);
+    if (!form.name.trim()) { setFormError("Məhsul adı tələb olunur."); return; }
+    if (!form.category.trim()) { setFormError("Kateqoriya tələb olunur."); return; }
+    if (!Number.isFinite(form.price) || form.price < 0) { setFormError("Qiymət 0 və ya daha böyük olmalıdır."); return; }
+    if (!form.shortDesc.trim()) { setFormError("Qısa təsvir tələb olunur."); return; }
+    if (form.image && !/^https?:\/\//i.test(form.image)) { setFormError("Şəkil URL-i düzgün deyil."); return; }
+    setFormError(null);
+    setSaving(true);
+    try { if (editId) { await updateProduct(editId, form); showToast("Məhsul uğurla yeniləndi."); } else { await createProduct(form); showToast("Məhsul uğurla əlavə edildi."); } await listProducts(true).then(setList); setShowForm(false); setEditId(null); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Məhsul yadda saxlanılmadı."); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -88,6 +96,7 @@ export default function AdminProducts() {
             <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">
               {editId ? "Məhsulu redaktə et" : "Yeni məhsul əlavə et"}
             </h3>
+            {formError && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</p>}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Məhsul adı *</label>
@@ -163,8 +172,8 @@ export default function AdminProducts() {
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-[#E4E9F4] text-[#6B7A99] font-medium hover:bg-[#F8FAFF]">
                 Ləğv et
               </button>
-              <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold hover:opacity-90">
-                Yadda saxla
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold hover:opacity-90 disabled:opacity-60">
+                {saving ? "Yadda saxlanılır..." : "Yadda saxla"}
               </button>
             </div>
           </div>
