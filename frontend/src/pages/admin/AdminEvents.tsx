@@ -662,7 +662,7 @@ export default function AdminEvents() {
                       <span
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
                           e.status === "upcoming"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-100 text-[#49a455]"
                             : "bg-gray-100 text-gray-600"
                         }`}
                       >

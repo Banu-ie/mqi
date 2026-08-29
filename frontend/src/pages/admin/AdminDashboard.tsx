@@ -115,19 +115,19 @@ export default function AdminDashboard() {
               Hamısını gör
             </Link>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {products.slice(0, 4).map((p) => (
-              <div key={p.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#F8FAFF] transition-colors">
-                <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
+              <div key={p.id} className="flex items-center gap-4 p-3 bg-gradient-to-r from-[#fee5d6] to-[#f4e0f8] rounded-lg transition-colors hover:from-[#f4e0f8] hover:to-[#fee5d6]">
+                <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
                   <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-[#1A2540] truncate">{p.name}</div>
                   <div className="text-xs text-[#6B7A99]">{p.category}</div>
                 </div>
-                <div className="text-sm font-bold text-[#3B6FE0] flex-shrink-0">{p.price} AZN</div>
+                <div className="text-sm font-bold text-[#e0844c] flex-shrink-0">{p.price} AZN</div>
                 <span className={`px-2 py-1 rounded-md text-xs font-medium flex-shrink-0 ${
-                  p.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                  p.status === "active" ? "bg-green-0 text-[#49a455]" : "bg-gray-100 text-gray-600"
                 }`}>
                   {p.status === "active" ? "Aktiv" : "Gizli"}
                 </span>

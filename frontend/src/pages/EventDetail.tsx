@@ -97,7 +97,7 @@ export default function EventDetail() {
               </div>
               <Link
                 to="/elaqe"
-                className="flex-shrink-0 px-6 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold shadow-md hover:shadow-lg hover:opacity-90 transition-all"
+                className="flex-shrink-0 px-6 py-3 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold shadow-md hover:shadow-lg hover:opacity-90 transition-all"
               >
                 Əlaqə saxla
               </Link>

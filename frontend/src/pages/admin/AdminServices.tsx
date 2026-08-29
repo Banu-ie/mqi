@@ -98,7 +98,7 @@ export default function AdminServices() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-[#E4E9F4] text-[#6B7A99] font-medium">Ləğv et</button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold disabled:opacity-60">{saving ? "Yadda saxlanılır..." : "Yadda saxla"}</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold disabled:opacity-60">{saving ? "Yadda saxlanılır..." : "Yadda saxla"}</button>
             </div>
           </div>
         </div>

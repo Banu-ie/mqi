@@ -95,7 +95,7 @@ export default function ServiceDetail() {
               </p>
               <Link
                 to="/elaqe"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
               >
                 Ətraflı məlumat üçün əlaqə saxlayın
               </Link>

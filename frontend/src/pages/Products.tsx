@@ -70,7 +70,7 @@ export default function Products() {
                 onClick={() => setCategory(cat)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   category === cat
-                    ? "bg-[#3B6FE0] text-white shadow-md"
+                    ? "bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white shadow-md"
                     : "bg-white text-[#6B7A99] border border-[#E4E9F4] hover:border-[#3B6FE0] hover:text-[#3B6FE0]"
                 }`}
               >

@@ -164,7 +164,7 @@ export default function AdminProducts() {
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-[#E4E9F4] text-[#6B7A99] font-medium hover:bg-[#F8FAFF]">
                 Ləğv et
               </button>
-              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold hover:opacity-90 disabled:opacity-60">
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold hover:opacity-90 disabled:opacity-60">
                 {saving ? "Yadda saxlanılır..." : "Yadda saxla"}
               </button>
             </div>
@@ -229,7 +229,7 @@ export default function AdminProducts() {
                   <td className="px-4 py-4 text-sm font-semibold text-[#1A2540]">{p.price} AZN</td>
                   <td className="px-4 py-4">
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                      p.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                      p.status === "active" ? "bg-[#cbeacf] text-[#49a455]" : "bg-gray-100 text-gray-600"
                     }`}>
                       {p.status === "active" ? "Aktiv" : "Gizli"}
                     </span>

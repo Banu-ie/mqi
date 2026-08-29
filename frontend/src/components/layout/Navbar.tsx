@@ -30,8 +30,8 @@ export default function Navbar() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-[linear-gradient(180deg,rgba(7,30,32,0.8),rgba(7,30,32,0.3),rgba(7,30,32,0.05))] backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(4,13,15,0.12)]'
-          : 'bg-[linear-gradient(180deg,rgba(7,30,32,0.52),rgba(7,30,32,0.22),rgba(7,30,32,0))] backdrop-blur-sm border-b border-white/10'
+          ? 'bg-gradient-to-b from-pink-500/80 via-purple-500/30 to-transparent backdrop-blur-xs border-white/10 shadow-[0_10px_30px_rgba(168,85,247,0.12)]'
+          : 'bg-gradient-to-b from-pink-500/50 via-purple-500/20 to-transparent  border-white/10'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,15 +42,15 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden lg:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_30px_rgba(6,18,22,0.18)]">
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_30px_rgba(6,18,22,0.18)]">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                   location.pathname === link.to
-                    ? "bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
-                    : "text-white/85 hover:text-white hover:bg-white/10"
+                    ? "bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
+                    : "text-[#ece3ee]  hover:text-[#a2378d] hover:bg-white/10"
                 }`}
               >
                 {link.label}
