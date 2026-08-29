@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getService } from "../api/services";
 import { ApiError } from "../api/client";
+import { resolveMediaUrl } from "../api/client";
 import type { Service } from "../api/types";
 import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
@@ -43,7 +44,7 @@ export default function ServiceDetail() {
           {/* Image */}
           <div className="relative h-72 lg:h-96 bg-[#F0F4FE]">
             <img
-              src={service.image}
+              src={resolveMediaUrl(service.image)}
               alt={service.name}
               className="w-full h-full object-cover"
             />

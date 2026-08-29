@@ -69,7 +69,7 @@ export default function AdminCategories() {
             <option value="product">Məhsul</option>
             <option value="service">Xidmət</option>
           </select>
-          <button onClick={handleAdd} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white text-sm font-semibold hover:opacity-90">
+          <button onClick={handleAdd} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white text-sm font-semibold hover:opacity-90">
             Əlavə et
           </button>
         </div>

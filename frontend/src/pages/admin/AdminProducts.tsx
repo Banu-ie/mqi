@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { createProduct, deleteProduct, listProducts, updateProduct, type ProductInput } from "../../api/products";
 import type { Product } from "../../api/types";
-import { ApiError } from "../../api/client";
+import { ApiError, resolveMediaUrl } from "../../api/client";
+import ImageFileField from "../../components/ui/ImageFileField";
 
 type FormState = ProductInput;
 
@@ -46,7 +47,6 @@ export default function AdminProducts() {
     if (!form.category.trim()) { setFormError("Kateqoriya tələb olunur."); return; }
     if (!Number.isFinite(form.price) || form.price < 0) { setFormError("Qiymət 0 və ya daha böyük olmalıdır."); return; }
     if (!form.shortDesc.trim()) { setFormError("Qısa təsvir tələb olunur."); return; }
-    if (form.image && !/^https?:\/\//i.test(form.image)) { setFormError("Şəkil URL-i düzgün deyil."); return; }
     setFormError(null);
     setSaving(true);
     try { if (editId) { await updateProduct(editId, form); showToast("Məhsul uğurla yeniləndi."); } else { await createProduct(form); showToast("Məhsul uğurla əlavə edildi."); } await listProducts(true).then(setList); setShowForm(false); setEditId(null); }
@@ -147,15 +147,7 @@ export default function AdminProducts() {
                   className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 resize-none"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1A2540] mb-2">Şəkil URL</label>
-                <input
-                  value={form.image}
-                  onChange={(e) => setForm({ ...form, image: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30"
-                />
-              </div>
+              <ImageFileField value={form.image} file={form.imageFile} onChange={(imageFile) => setForm({ ...form, imageFile })} />
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Status</label>
                 <select
@@ -223,7 +215,7 @@ export default function AdminProducts() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
-                        <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                        <img src={resolveMediaUrl(p.image)} alt={p.name} className="w-full h-full object-cover" />
                       </div>
                       <div>
                         <div className="text-sm font-medium text-[#1A2540]">{p.name}</div>

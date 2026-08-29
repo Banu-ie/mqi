@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getProduct, listProducts } from "../api/products";
 import { ApiError } from "../api/client";
+import { resolveMediaUrl } from "../api/client";
 import type { Product } from "../api/types";
 import ProductCard from "../components/ui/ProductCard";
 import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
@@ -50,7 +51,7 @@ export default function ProductDetail() {
             {/* Image */}
             <div className="aspect-square lg:aspect-auto bg-[#F0F4FE] relative">
               <img
-                src={product.image}
+                src={resolveMediaUrl(product.image)}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />

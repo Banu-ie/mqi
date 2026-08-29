@@ -1,37 +1,41 @@
 import { useEffect, useState } from "react";
 import { createService, deleteService, listServices, updateService, type ServiceInput } from "../../api/services";
 import type { Service } from "../../api/types";
-import { ApiError } from "../../api/client";
+import { ApiError, resolveMediaUrl } from "../../api/client";
+import ImageFileField from "../../components/ui/ImageFileField";
 
 export default function AdminServices() {
   const [list, setList] = useState<Service[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", description: "", fullDesc: "", image: "", forWhom: "", benefits: "", status: "active" as "active" | "inactive" });
+  const [form, setForm] = useState({ name: "", description: "", fullDesc: "", image: "", imageFile: undefined as File | undefined, forWhom: "", benefits: "", status: "active" as "active" | "inactive" });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   useEffect(() => { listServices(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Xidmətlər yüklənə bilmədi.")).finally(() => setLoading(false)); }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const openAdd = () => {
-    setForm({ name: "", description: "", fullDesc: "", image: "", forWhom: "", benefits: "", status: "active" });
+    setForm({ name: "", description: "", fullDesc: "", image: "", imageFile: undefined, forWhom: "", benefits: "", status: "active" });
     setEditId(null); setShowForm(true);
   };
   const openEdit = (s: Service) => {
-    setForm({ name: s.name, description: s.description, fullDesc: s.fullDesc, image: s.image, forWhom: s.forWhom, benefits: s.benefits.join("\n"), status: s.status });
+    setForm({ name: s.name, description: s.description, fullDesc: s.fullDesc, image: s.image, imageFile: undefined, forWhom: s.forWhom, benefits: s.benefits.join("\n"), status: s.status });
     setEditId(s.id); setShowForm(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) { setError("Xidmət adı tələb olunur."); return; }
+    if (!form.description.trim()) { setError("Qısa təsvir tələb olunur."); return; }
     const benefitsArr = form.benefits.split("\n").filter(Boolean);
     const input: ServiceInput = { ...form, benefits: benefitsArr };
-    try { if (editId) { await updateService(editId, input); showToast("Xidmət uğurla yeniləndi."); } else { await createService(input); showToast("Xidmət uğurla əlavə edildi."); } await listServices(true).then(setList); }
-    catch (err) { setError(err instanceof ApiError ? err.message : "Xidmət yadda saxlanılmadı."); return; }
-    setShowForm(false);
+    setSaving(true);
+    try { if (editId) { await updateService(editId, input); showToast("Xidmət uğurla yeniləndi."); } else { await createService(input); showToast("Xidmət uğurla əlavə edildi."); } await listServices(true).then(setList); setShowForm(false); }
+    catch (err) { setError(err instanceof ApiError ? err.message : "Xidmət yadda saxlanılmadı."); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (id: string) => {
@@ -83,10 +87,7 @@ export default function AdminServices() {
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Üstünlüklər (hər sətirdə bir)</label>
                 <textarea value={form.benefits} onChange={(e) => setForm({ ...form, benefits: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 resize-none" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-[#1A2540] mb-2">Şəkil URL</label>
-                <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30" />
-              </div>
+              <ImageFileField value={form.image} file={form.imageFile} onChange={(imageFile) => setForm({ ...form, imageFile })} />
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as "active" | "inactive" })} className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none bg-white">
@@ -97,7 +98,7 @@ export default function AdminServices() {
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-[#E4E9F4] text-[#6B7A99] font-medium">Ləğv et</button>
-              <button onClick={handleSave} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold">Yadda saxla</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold disabled:opacity-60">{saving ? "Yadda saxlanılır..." : "Yadda saxla"}</button>
             </div>
           </div>
         </div>
@@ -108,7 +109,7 @@ export default function AdminServices() {
           <h1 className="font-['DM_Serif_Display'] text-3xl text-[#1A2540]">Xidmətlər</h1>
           <p className="text-[#6B7A99] text-sm mt-1">{list.length} xidmət</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold text-sm shadow-md hover:opacity-90">
+        <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold text-sm shadow-md hover:opacity-90">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
           Xidmət əlavə et
         </button>
@@ -125,7 +126,7 @@ export default function AdminServices() {
         {list.map((s) => (
           <div key={s.id} className="bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden hover:shadow-md transition-shadow">
             <div className="h-40 bg-[#F0F4FE] overflow-hidden">
-              {s.image ? <img src={s.image} alt={s.name} className="w-full h-full object-cover" /> : null}
+              {s.image ? <img src={resolveMediaUrl(s.image)} alt={s.name} className="w-full h-full object-cover" /> : null}
             </div>
             <div className="p-5">
               <div className="flex items-start justify-between mb-2">

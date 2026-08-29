@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Service } from "../../api/types";
+import { resolveMediaUrl } from "../../api/client";
 
 interface Props {
   service: Service;
@@ -10,7 +11,7 @@ export default function ServiceCard({ service }: Props) {
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-[#E4E9F4] group">
       <div className="relative overflow-hidden h-48 bg-[#F0F4FE]">
         <img
-          src={service.image}
+          src={resolveMediaUrl(service.image)}
           alt={service.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

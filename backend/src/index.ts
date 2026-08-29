@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import path from "node:path";
+import multer from "multer";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./lib/swagger";
@@ -18,6 +20,7 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://l
 
 app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json());
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -38,6 +41,10 @@ app.use("/api", (_req, res) => {
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
+  if (err instanceof multer.MulterError) {
+    const message = err.code === "LIMIT_FILE_SIZE" ? "Şəkil 5 MB-dan böyük ola bilməz." : "Yalnız JPG, PNG, WEBP və GIF şəkillərinə icazə verilir.";
+    return res.status(400).json({ error: message });
+  }
   res.status(500).json({ error: "Serverdə xəta baş verdi. Zəhmət olmasa yenidən cəhd edin." });
 });
 

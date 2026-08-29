@@ -1,4 +1,5 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+export const resolveMediaUrl = (value: string) => value.startsWith("/") ? `${API_BASE_URL.replace(/\/api\/?$/, "")}${value}` : value;
 const TOKEN_KEY = "mqicma_admin_token";
 
 export class ApiError extends Error {
@@ -12,13 +13,14 @@ export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
 interface RequestOptions { method?: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown; auth?: boolean; }
 export async function apiRequest<T>(path: string, { method = "GET", body, auth = false }: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const isFormData = body instanceof FormData;
+  if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
   if (auth) {
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
   }
   let response: Response;
-  try { response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }); }
+  try { response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body) }); }
   catch { throw new ApiError("Serverə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.", 0); }
   if (response.status === 204) return undefined as T;
   const text = await response.text();
