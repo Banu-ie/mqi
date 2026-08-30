@@ -42,7 +42,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden lg:flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur-md shadow-[0_10px_30px_rgba(6,18,22,0.18)]">
+          <div className="hidden lg:flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur-lg shadow-[0_10px_30px_rgba(6,18,22,0.18)]">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
