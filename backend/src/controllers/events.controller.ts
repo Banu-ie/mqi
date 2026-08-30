@@ -18,38 +18,36 @@ const isValidDate = (value: string) => {
 };
 
 const eventSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, "Başlıq tələb olunur."),
+  title: z.string().trim().min(1, "Başlıq tələb olunur."),
 
-  date: z
-    .string()
-    .refine(isValidDate, "Tarix düzgün deyil."),
+  date: z.string().refine(isValidDate, "Tarix düzgün deyil."),
 
-  location: z
-    .string()
-    .trim()
-    .min(1, "Məkan tələb olunur."),
+  location: z.string().trim().min(1, "Məkan tələb olunur."),
 
-  shortDesc: z
-    .string()
-    .trim()
-    .min(1, "Qısa təsvir tələb olunur."),
+  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur."),
 
-  fullDesc: z
-    .string()
-    .default(""),
+  fullDesc: z.string().default(""),
 
   image: z
     .string()
-    .url("Şəkil düzgün URL olmalıdır.")
-    .or(z.literal("")),
+    .refine(
+      (value) =>
+        value === "" ||
+        value.startsWith("/uploads/") ||
+        /^https?:\/\//i.test(value),
+      "Şəkil düzgün deyil.",
+    ),
 
-  status: z
-    .enum(["upcoming", "past"])
-    .default("upcoming"),
+  status: z.enum(["upcoming", "past"]).default("upcoming"),
 });
+
+function imageValue(req: Request, fallback = "") {
+  return req.file
+    ? `/uploads/events/${req.file.filename}`
+    : typeof req.body.image === "string"
+      ? req.body.image
+      : fallback;
+}
 
 export function getEvents(req: Request, res: Response) {
   const status =
@@ -64,15 +62,22 @@ export function getEventById(req: Request, res: Response) {
   return res.json(event);
 }
 export function createEvent(req: Request, res: Response) {
-  const parsed = eventSchema.safeParse(req.body);
+  const parsed = eventSchema.safeParse({ ...req.body, image: imageValue(req) });
   if (!parsed.success)
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  return res.status(201).json(Events.create(parsed.data));
+  return res
+    .status(201)
+    .json(Events.create({ ...parsed.data, image: imageValue(req) }));
 }
 export function updateEvent(req: Request, res: Response) {
-  const parsed = eventSchema.partial().safeParse(req.body);
+  const parsed = eventSchema
+    .partial()
+    .safeParse({
+      ...req.body,
+      ...(req.file ? { image: imageValue(req) } : {}),
+    });
   if (!parsed.success)
     return res
       .status(400)

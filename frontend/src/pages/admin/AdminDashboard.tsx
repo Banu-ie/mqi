@@ -7,13 +7,6 @@ import { listCategories } from "../../api/categories";
 import type { Product, Service, Event, Category } from "../../api/types";
 import { ErrorBanner, PageSpinner } from "../../components/ui/StatusStates";
 
-const activity = [
-  { text: "Yeni məhsul əlavə edildi: Əl toxunması xalça", time: "2 saat əvvəl", icon: "🛍️" },
-  { text: "Tədbir yeniləndi: Sahibkarlıq seminarı", time: "5 saat əvvəl", icon: "📅" },
-  { text: "Xidmət əlavə edildi: Psixoloji sessiyalar", time: "Dünən", icon: "⚙️" },
-  { text: "Məzmun yeniləndi: Ana səhifə mətni", time: "2 gün əvvəl", icon: "✏️" },
-];
-
 export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -24,6 +17,22 @@ export default function AdminDashboard() {
   useEffect(() => { Promise.all([listProducts(true), listServices(true), listEvents(), listCategories()]).then(([p, s, e, c]) => { setProducts(p); setServices(s); setEvents(e); setCategories(c); }).catch((err) => setError(err instanceof Error ? err.message : "Dashboard yüklənmədi.")).finally(() => setLoading(false)); }, []);
   if (loading) return <PageSpinner label="Dashboard yüklənir..." />;
   if (error) return <ErrorBanner message={error} />;
+
+  const recentActivity = [
+    ...events.map((event) => ({
+      text: `Tədbir əlavə edildi: ${event.title}`,
+      createdAt: event.createdAt,
+      icon: "📅",
+    })),
+    ...services.map((service) => ({
+      text: `Xidmət əlavə edildi: ${service.name}`,
+      createdAt: service.createdAt,
+      icon: "⚙️",
+    })),
+  ]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
+
   const stats = [
     {
       label: "Məhsullar",
@@ -140,12 +149,14 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-2xl border border-[#E4E9F4] p-6">
           <h2 className="font-semibold text-[#1A2540] mb-6">Son fəaliyyət</h2>
           <div className="space-y-4">
-            {activity.map((a, i) => (
-              <div key={i} className="flex items-start gap-3">
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-[#6B7A99]">Hələ fəaliyyət yoxdur.</p>
+            ) : recentActivity.map((a, i) => (
+              <div key={`${a.text}-${i}`} className="flex items-start gap-3">
                 <div className="text-xl flex-shrink-0 mt-0.5">{a.icon}</div>
                 <div>
                   <p className="text-sm text-[#1A2540] leading-relaxed">{a.text}</p>
-                  <p className="text-xs text-[#6B7A99] mt-1">{a.time}</p>
+                  <p className="text-xs text-[#6B7A99] mt-1">{new Date(a.createdAt).toLocaleDateString("az-AZ", { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
               </div>
             ))}

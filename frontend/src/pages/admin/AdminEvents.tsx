@@ -8,6 +8,7 @@ import {
 } from "../../api/events";
 import type { Event } from "../../api/types";
 import { ApiError } from "../../api/client";
+import ImageFileField from "../../components/ui/ImageFileField";
 
 type FormErrors = {
   title?: string;
@@ -25,6 +26,7 @@ const initialForm = {
   shortDesc: "",
   fullDesc: "",
   image: "",
+  imageFile: undefined as File | undefined,
   status: "upcoming" as "upcoming" | "past",
 };
 
@@ -130,7 +132,9 @@ export default function AdminEvents() {
       newErrors.status = "Düzgün status seçin.";
     }
 
-    if (form.image.trim()) {
+    if (!form.imageFile && !form.image.trim()) {
+      newErrors.image = "Şəkil seçin.";
+    } else if (form.image.trim()) {
       try {
         new URL(form.image.trim());
       } catch {
@@ -186,6 +190,7 @@ export default function AdminEvents() {
       shortDesc: e.shortDesc,
       fullDesc: e.fullDesc,
       image: e.image,
+      imageFile: undefined,
       status: e.status,
     });
 
@@ -217,6 +222,7 @@ export default function AdminEvents() {
       shortDesc: form.shortDesc.trim(),
       fullDesc: form.fullDesc.trim(),
       image: form.image.trim(),
+      imageFile: form.imageFile,
       status: form.status,
     };
 
@@ -493,35 +499,20 @@ export default function AdminEvents() {
                 />
               </div>
 
-              {/* Image URL */}
-              <div>
-                <label className="block text-sm font-medium text-[#1A2540] mb-2">
-                  Şəkil URL
-                </label>
+              <ImageFileField
+                value={form.image}
+                file={form.imageFile}
+                onChange={(imageFile) => {
+                  setForm((prev) => ({ ...prev, imageFile, image: imageFile ? prev.image : prev.image }));
+                  if (errors.image) clearFieldError("image");
+                }}
+              />
 
-                <input
-                  type="url"
-                  value={form.image}
-                  onChange={(e) =>
-                    updateField(
-                      "image",
-                      e.target.value
-                    )
-                  }
-                  placeholder="https://example.com/image.jpg"
-                  className={`w-full px-4 py-3 rounded-xl border ${
-                    errors.image
-                      ? "border-red-400"
-                      : "border-[#E4E9F4]"
-                  } focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30`}
-                />
-
-                {errors.image && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {errors.image}
-                  </p>
-                )}
-              </div>
+              {errors.image && (
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.image}
+                </p>
+              )}
             </div>
 
             {/* Form buttons */}
