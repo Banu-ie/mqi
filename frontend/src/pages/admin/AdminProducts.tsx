@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createProduct, deleteProduct, listProducts, updateProduct, type ProductInput } from "../../api/products";
-import type { Product } from "../../api/types";
+import { listCategories } from "../../api/categories";
+import type { Category, Product } from "../../api/types";
 import { ApiError, resolveMediaUrl } from "../../api/client";
 import ImageFileField from "../../components/ui/ImageFileField";
 
@@ -9,7 +10,7 @@ type FormState = ProductInput;
 const emptyForm: FormState = {
   name: "",
   price: 0,
-  category: "Əl işləri",
+  category: "",
   shortDesc: "",
   fullDesc: "",
   image: "",
@@ -18,6 +19,7 @@ const emptyForm: FormState = {
 
 export default function AdminProducts() {
   const [list, setList] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -27,14 +29,27 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { listProducts(true).then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi.")).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    Promise.all([listProducts(true), listCategories("product")])
+      .then(([products, productCategories]) => {
+        setList(products);
+        setCategories(productCategories);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Məhsullar yüklənə bilmədi."))
+      .finally(() => setLoading(false));
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const openAdd = () => { setForm(emptyForm); setFormError(null); setEditId(null); setShowForm(true); };
+  const openAdd = () => {
+    setForm({ ...emptyForm, category: categories[0]?.name ?? "" });
+    setFormError(null);
+    setEditId(null);
+    setShowForm(true);
+  };
   const openEdit = (p: Product) => {
     setForm({ name: p.name, price: p.price, category: p.category, shortDesc: p.shortDesc, fullDesc: p.fullDesc, image: p.image, status: p.status });
     setFormError(null);
@@ -115,9 +130,13 @@ export default function AdminProducts() {
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 bg-white"
                   >
-                    {["Əl işləri", "Geyim", "Çantalar", "Aksesuarlar", "Digər"].map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
+                    {categories.length === 0 ? (
+                      <option value="">Kateqoriya yoxdur</option>
+                    ) : (
+                      categories.map((c) => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))
+                    )}
                   </select>
                 </div>
                 <div>

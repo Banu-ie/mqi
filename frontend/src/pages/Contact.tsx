@@ -1,14 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { sendContactMessage } from "../api/contact";
+import { getContent } from "../api/content";
 import { ApiError } from "../api/client";
+import type { SiteContent } from "../api/types";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
+  const [content, setContent] = useState<SiteContent | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const phonePattern = /^(?:\+994|00994|0)(?:10|12|18|20|21|22|23|24|25|26|33|35|36|50|51|55|60|70|77|99)\d{7}$/;
+
+  useEffect(() => {
+    getContent().then(setContent).catch(() => setContent(null));
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -42,7 +49,7 @@ export default function Contact() {
         </svg>
       ),
       label: "Instagram",
-      value: "@mingachevir_womens_community",
+      value: content?.instagram || "@mingachevir_womens_community",
       href: "https://instagram.com/mingachevir_womens_community",
       color: "from-[#f09433] to-[#bc1888]",
     },
@@ -53,8 +60,8 @@ export default function Contact() {
         </svg>
       ),
       label: "Telefon",
-      value: "+994 XX XXX XX XX",
-      href: "tel:+994XXXXXXXXX",
+      value: content?.phone || "+994 XX XXX XX XX",
+      href: content?.phone ? `tel:${content.phone.replace(/\s+/g, "")}` : "tel:+994XXXXXXXXX",
       color: "from-[#3B6FE0] to-[#3B6FE0]",
     },
     {
@@ -75,8 +82,8 @@ export default function Contact() {
         </svg>
       ),
       label: "Email",
-      value: "info@mqicma.az",
-      href: "mailto:info@mqicma.az",
+      value: content?.email || "info@mqicma.az",
+      href: content?.email ? `mailto:${content.email}` : "mailto:info@mqicma.az",
       color: "from-[#7C5CFC] to-[#3B6FE0]",
     },
   ];
@@ -132,7 +139,7 @@ export default function Contact() {
                   </svg>
                   <div>
                     <div className="font-semibold text-[#1A2540] mb-1">Ünvan</div>
-                    <div className="text-[#6B7A99] text-sm">Mingəçevir şəhəri, Azərbaycan</div>
+                    <div className="text-[#6B7A99] text-sm">{content?.address || "Mingəçevir şəhəri, Azərbaycan"}</div>
                   </div>
                 </div>
               </div>

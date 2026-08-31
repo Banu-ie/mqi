@@ -5,13 +5,19 @@ import { ApiError } from "../../api/client";
 
 export default function AdminCategories() {
   const [list, setList] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState<"product" | "service">("product");
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { listCategories().then(setList).catch((err) => setError(err instanceof ApiError ? err.message : "Kateqoriyalar yüklənə bilmədi.")); }, []);
+  useEffect(() => {
+    listCategories()
+      .then(setList)
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Kateqoriyalar yüklənə bilmədi."))
+      .finally(() => setLoading(false));
+  }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -44,6 +50,7 @@ export default function AdminCategories() {
     <div>
       {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</div>}
       {toast && <div className="fixed top-6 right-6 z-50 bg-[#1A2540] text-white px-5 py-3 rounded-xl shadow-xl text-sm font-medium">{toast}</div>}
+      {loading && <div className="mb-4 text-sm text-[#6B7A99]">Kateqoriyalar yüklənir...</div>}
 
       <div className="mb-8">
         <h1 className="font-['DM_Serif_Display'] text-3xl text-[#1A2540]">Kateqoriyalar</h1>
