@@ -93,7 +93,7 @@ export default function Home() {
           <img
             src="https://images.unsplash.com/photo-1783853855829-684167740ed8?w=1400&h=900&fit=crop&auto=format"
             alt="Mingəçevir Qadın İcması"
-            className="w-full h-full object-none"
+            className="w-full h-full object-cover brightness-75"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#1A2540]/90 via-[#1A2540]/70 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#1A2540]/60 via-transparent to-transparent" />

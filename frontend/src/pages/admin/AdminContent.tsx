@@ -50,7 +50,7 @@ export default function AdminContent() {
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
               activeTab === tab.key
-                ? "bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white shadow-md"
+                ? "bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white shadow-md"
                 : "text-[#6B7A99] hover:text-[#1A2540]"
             }`}
           >
@@ -130,7 +130,7 @@ export default function AdminContent() {
 
         <button
           onClick={handleSave}
-          className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#3B6FE0] to-[#7C5CFC] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
+          className="mt-8 w-full py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
         >
           Yadda saxla
         </button>
