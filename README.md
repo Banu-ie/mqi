@@ -16,6 +16,7 @@ The site content is in Azerbaijani.
 | Database | PostgreSQL via `pg` (managed: Neon) |
 | Auth | JWT (12 h expiry) + bcrypt password hashing |
 | Validation | zod |
+| Uploads | multer (images to `backend/uploads/`) |
 | API docs | Swagger UI / OpenAPI 3 (`swagger-jsdoc`) |
 | Hardening | helmet, express-rate-limit, CORS allowlist, 100 kB body cap |
 | Tests | `node:test` via `tsx`, against a throwaway PostgreSQL schema |
@@ -24,21 +25,24 @@ The site content is in Azerbaijani.
 
 ```
 .
-├── src/                  # React frontend
-│   ├── api/              # typed fetch wrappers, one module per resource
-│   ├── components/       # layout, branding, cards, loading/empty/error states
-│   ├── context/          # AuthContext (token + current admin)
-│   └── pages/            # public pages + pages/admin/* panel
-├── backend/
+├── frontend/             # React app (own package.json)
+│   └── src/
+│       ├── api/          # typed fetch wrappers, one module per resource
+│       ├── components/   # layout, branding, cards, loading/empty/error states
+│       ├── context/      # AuthContext (token + current admin)
+│       └── pages/        # public pages + pages/admin/* panel
+├── backend/              # Express API (own package.json)
 │   ├── src/db/
 │   │   ├── migrations/   # numbered .sql files, applied in order
 │   │   ├── index.ts      # pool, query helpers, migration runner
 │   │   ├── models.ts     # data access
 │   │   └── seed.ts       # demo catalogue + first admin
-│   ├── src/routes/       # Express routers, each carrying its Swagger JSDoc
-│   ├── src/lib/          # auth (JWT), swagger spec
-│   ├── src/middleware/   # requireAuth, hasValidAdminToken
+│   ├── src/routes/       # thin Express routers
+│   ├── src/controllers/  # request handling and validation per resource
+│   ├── src/lib/          # auth (JWT), OpenAPI spec
+│   ├── src/middleware/   # requireAuth, hasValidAdminToken, image upload
 │   ├── src/__tests__/    # end-to-end API tests
+│   ├── uploads/          # uploaded images (not in git)
 │   └── Dockerfile
 ├── render.yaml           # Render blueprint: backend + static frontend
 └── scripts/serve-local.sh
@@ -74,6 +78,7 @@ npm run dev       # http://localhost:4000
 ### 3. Frontend
 
 ```bash
+cd frontend
 npm install
 npm run dev       # http://localhost:5173
 ```
@@ -104,7 +109,7 @@ Backend (`backend/.env`; templates in `backend/.env.example` and
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no | Read by `npm run seed` only. |
 | `TEST_DATABASE_URL` | no | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`. |
 
-Frontend (`.env`, template in `.env.example`):
+Frontend (`frontend/.env`, template in `frontend/.env.example`):
 
 | Variable | Required | Notes |
 | --- | --- | --- |
@@ -162,6 +167,10 @@ events and categories, plus `PUT /api/content`, `GET /api/contact`,
 `GET /api/auth/me`, and the `?all=true` form of the product and service lists
 (which returns unpublished rows).
 
+Product, service and event writes accept either JSON or `multipart/form-data`
+with an `image` file (JPG, PNG, WEBP or GIF, max 5 MB). Uploads are stored under
+`backend/uploads/` and served from `/uploads/...`.
+
 Rate limits: 300 requests / 15 min across `/api`, 10 failed logins / 15 min on
 `/api/auth/login`, 5 submissions / hour on `POST /api/contact`.
 
@@ -178,8 +187,8 @@ uniquely named PostgreSQL schema and drops it afterwards, so the suite cannot
 touch development or deployed data.
 
 ```bash
-npm run build                 # frontend production build
-cd backend && npm run build   # backend tsc + copy migrations
+cd frontend && npm run build   # frontend production build
+cd backend  && npm run build   # backend tsc + copy migrations
 ```
 
 ## Running a local production deployment

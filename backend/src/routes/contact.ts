@@ -1,59 +1,6 @@
 import { Router } from "express";
-import { z } from "zod";
-import { ContactMessages } from "../db/models";
+import { createContact, getContacts } from "../controllers/contact.controller";
 import { requireAuth } from "../middleware/requireAuth";
-
 export const contactRouter = Router();
-
-const messageSchema = z.object({
-  name: z.string().min(1, "Ad tələb olunur."),
-  phone: z.string().min(1, "Telefon tələb olunur."),
-  message: z.string().min(1, "Mesaj tələb olunur."),
-});
-
-/**
- * @swagger
- * /contact:
- *   post:
- *     summary: Əlaqə formundan mesaj göndər (ictimai)
- *     tags: [Contact]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema: { $ref: '#/components/schemas/ContactMessageInput' }
- *     responses:
- *       201:
- *         description: Mesaj qeydə alındı
- *       400:
- *         description: Validasiya xətası
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-contactRouter.post("/", async (req, res) => {
-  const parsed = messageSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const saved = await ContactMessages.create(parsed.data);
-  res.status(201).json(saved);
-});
-
-/**
- * @swagger
- * /contact:
- *   get:
- *     summary: Bütün əlaqə mesajlarını gətir (yalnız admin)
- *     tags: [Contact]
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: Mesaj siyahısı
- *       401:
- *         description: Token yoxdur və ya etibarsızdır
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-contactRouter.get("/", requireAuth, async (_req, res) => {
-  res.json(await ContactMessages.list());
-});
+contactRouter.post("/", createContact);
+contactRouter.get("/", requireAuth, getContacts);

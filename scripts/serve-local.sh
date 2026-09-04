@@ -17,10 +17,10 @@ fi
 # Deliberately no VITE_API_URL: the bundle then calls same-origin /api, and the
 # preview server proxies that to the backend — the same shape as production,
 # where the static host rewrites /api/* instead.
-rm -f "$ROOT/.env.production"
+rm -f "$ROOT/frontend/.env.production"
 
 echo "==> building frontend"
-(cd "$ROOT" && npm run build >/dev/null)
+(cd "$ROOT/frontend" && npm run build >/dev/null)
 echo "==> building backend"
 (cd "$ROOT/backend" && npm run build >/dev/null)
 
@@ -37,7 +37,7 @@ echo "==> starting backend on :${BACKEND_PORT}"
 pids+=($!)
 
 echo "==> starting frontend on :${FRONTEND_PORT} (proxying /api to :${BACKEND_PORT})"
-(cd "$ROOT" && BACKEND_PORT="$BACKEND_PORT" npx vite preview --port "$FRONTEND_PORT" --host 127.0.0.1) &
+(cd "$ROOT/frontend" && BACKEND_PORT="$BACKEND_PORT" npx vite preview --port "$FRONTEND_PORT" --host 127.0.0.1) &
 pids+=($!)
 
 sleep 4

@@ -1,6 +1,8 @@
+# Root-level artefacts. backend/ and frontend/ carry their own ignore rules.
 node_modules/
 dist/
 .env
 .env.*
 !.env.example
-!.env.production.example
+*.log
+.DS_Store

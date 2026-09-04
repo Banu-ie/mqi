@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+import path from "node:path";
+import multer from "multer";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -13,9 +15,10 @@ import { eventsRouter } from "./routes/events";
 import { categoriesRouter } from "./routes/categories";
 import { contentRouter } from "./routes/content";
 import { contactRouter } from "./routes/contact";
+
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
-const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:8443")
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:4173,http://localhost:8443")
   .split(",")
   .map((origin) => origin.trim());
 
@@ -23,9 +26,12 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || "http://localhost:5173,http://l
 // X-Forwarded-For; without this the rate limiters would see the proxy IP only.
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 
+// crossOriginResourcePolicy is relaxed so uploaded images can be loaded from
+// the frontend when it is served from a different origin.
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json({ limit: "100kb" }));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 const rateLimitMessage = (message: string) => ({
   windowMs: 15 * 60 * 1000,
@@ -55,6 +61,7 @@ app.use("/api", apiLimiter);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
+// Swagger UI ships inline styles/scripts that helmet's default CSP blocks.
 app.use("/api/docs", helmet({ contentSecurityPolicy: false }), swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get("/api/docs.json", (_req, res) => res.json(swaggerSpec));
 
@@ -73,6 +80,13 @@ app.use("/api", (_req, res) => {
 });
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Rejected uploads are client faults with a specific cause worth reporting.
+  if (err instanceof multer.MulterError) {
+    const message = err.code === "LIMIT_FILE_SIZE"
+      ? "Şəkil 5 MB-dan böyük ola bilməz."
+      : "Yalnız JPG, PNG, WEBP və GIF şəkillərinə icazə verilir.";
+    return res.status(400).json({ error: message });
+  }
   // body-parser surfaces malformed/oversized request bodies as errors with a
   // `type` field. Those are client faults and must not be reported as 500s.
   const bodyError = err as { type?: string; status?: number } | null;

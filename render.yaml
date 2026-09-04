@@ -35,6 +35,7 @@ services:
   - type: web
     name: mqicma-frontend
     runtime: static
+    rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     envVars:
