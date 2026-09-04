@@ -1,92 +1,175 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { Admins } from "../db/models";
-import { signAdminToken } from "../lib/auth";
-import { requireAuth, AuthedRequest } from "../middleware/requireAuth";
+import { db } from "../db";
+import { Categories, Products } from "../db/models";
+import { requireAuth } from "../middleware/requireAuth";
 
-
-// We create and export the router from THIS file
 export const categoriesRouter = Router();
 
-// Your actual routes go here
-categoriesRouter.get("/", (req, res) => {
-  res.json({ message: "Products route working" });
-});
-export const authRouter = Router();
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+const categorySchema = z.object({
+  name: z.string().min(1, "Kateqoriya adı tələb olunur."),
+  type: z.enum(["product", "service"]),
 });
 
 /**
  * @swagger
- * /auth/login:
+ * /categories:
+ *   get:
+ *     summary: Bütün kateqoriyaları siyahıla
+ *     tags: [Categories]
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [product, service] }
+ *         description: Kateqoriyaları növə görə filtrlə
+ *     responses:
+ *       200:
+ *         description: Kateqoriya siyahısı
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Category' }
+ */
+categoriesRouter.get("/", (req, res) => {
+  const type = req.query.type;
+  const filter = type === "product" || type === "service" ? type : undefined;
+  res.json(Categories.list(filter));
+});
+
+/**
+ * @swagger
+ * /categories:
  *   post:
- *     summary: Admin girişi (email + şifrə)
- *     tags: [Auth]
+ *     summary: Yeni kateqoriya yarat (yalnız admin)
+ *     tags: [Categories]
+ *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/LoginInput' }
+ *           schema: { $ref: '#/components/schemas/CategoryInput' }
  *     responses:
- *       200:
- *         description: Giriş uğurludur, JWT token qaytarılır
+ *       201:
+ *         description: Yaradılan kateqoriya
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/LoginResponse' }
+ *             schema: { $ref: '#/components/schemas/Category' }
  *       400:
- *         description: Email və ya şifrə göndərilməyib
+ *         description: Validasiya xətası
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
- *       401:
- *         description: Email və ya şifrə yanlışdır
+ *       409:
+ *         description: Kateqoriya artıq mövcuddur
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-authRouter.post("/login", async (req, res) => {
-  const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: "Email və şifrə tələb olunur." });
+categoriesRouter.post("/", requireAuth, (req, res) => {
+  const parsed = categorySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  try {
+    const category = Categories.create(parsed.data);
+    res.status(201).json(category);
+  } catch {
+    res.status(409).json({ error: "Bu kateqoriya artıq mövcuddur." });
   }
-  const { email, password } = parsed.data;
-  const admin = Admins.findByEmail(email);
-  if (!admin) {
-    return res.status(401).json({ error: "Email və ya şifrə yanlışdır." });
-  }
-  const valid = await bcrypt.compare(password, admin.passwordHash);
-  if (!valid) {
-    return res.status(401).json({ error: "Email və ya şifrə yanlışdır." });
-  }
-  const token = signAdminToken({ sub: admin.id, email: admin.email, role: admin.role });
-  return res.json({
-    token,
-    admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role },
-  });
 });
 
 /**
  * @swagger
- * /auth/me:
- *   get:
- *     summary: Cari daxil olmuş admin haqqında məlumat
- *     tags: [Auth]
+ * /categories/{id}:
+ *   put:
+ *     summary: Kateqoriyanı yenilə (yalnız admin)
+ *     tags: [Categories]
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CategoryInput' }
  *     responses:
  *       200:
- *         description: Admin məlumatı
- *       401:
- *         description: Token yoxdur, etibarsızdır və ya istifadəçi tapılmadı
+ *         description: Yenilənmiş kateqoriya
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Category' }
+ *       400:
+ *         description: Validasiya xətası
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Kateqoriya tapılmadı
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-authRouter.get("/me", requireAuth, async (req: AuthedRequest, res) => {
-  const admin = Admins.findById(req.admin!.sub);
-  if (!admin) return res.status(401).json({ error: "İstifadəçi tapılmadı." });
-  return res.json({ admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role } });
+categoriesRouter.put("/:id", requireAuth, (req, res) => {
+  const parsed = categorySchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  const existing = Categories.get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Kateqoriya tapılmadı." });
+
+  // Products reference their category by name, so a rename has to be carried
+  // over to them in the same transaction or those products fall out of every
+  // category filter.
+  const renamedTo = parsed.data.name && parsed.data.name !== existing.name ? parsed.data.name : null;
+  const category = db.transaction(() => {
+    const updated = Categories.update(req.params.id, parsed.data);
+    if (updated && renamedTo) Products.renameCategory(existing.name, renamedTo);
+    return updated;
+  })();
+
+  if (!category) return res.status(404).json({ error: "Kateqoriya tapılmadı." });
+  res.json(category);
+});
+
+/**
+ * @swagger
+ * /categories/{id}:
+ *   delete:
+ *     summary: Kateqoriyanı sil (yalnız admin)
+ *     tags: [Categories]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       204:
+ *         description: Silindi
+ *       409:
+ *         description: Kateqoriya istifadədədir (məhsullar bağlıdır)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Kateqoriya tapılmadı
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+categoriesRouter.delete("/:id", requireAuth, (req, res) => {
+  const existing = Categories.get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Kateqoriya tapılmadı." });
+
+  // Refuse to orphan products: without a foreign key nothing else would stop
+  // this from leaving rows pointing at a category that no longer exists.
+  const inUse = existing.type === "product" ? Products.countByCategory(existing.name) : 0;
+  if (inUse > 0) {
+    return res.status(409).json({
+      error: `Bu kateqoriyada ${inUse} məhsul var. Əvvəlcə həmin məhsulları başqa kateqoriyaya keçirin.`,
+    });
+  }
+
+  Categories.remove(req.params.id);
+  res.status(204).send();
 });

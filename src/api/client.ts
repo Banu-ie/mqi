@@ -1,4 +1,11 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+// VITE_API_URL is baked in at build time. In development we fall back to the
+// local backend; in a production build we fall back to a same-origin /api so a
+// misconfigured deploy cannot end up pointing browsers at localhost. Vite
+// statically replaces import.meta.env.DEV, so the localhost literal is dropped
+// from the production bundle entirely.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "http://localhost:4000/api" : "/api");
 const TOKEN_KEY = "mqicma_admin_token";
 
 export class ApiError extends Error {

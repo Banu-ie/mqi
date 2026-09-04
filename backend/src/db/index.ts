@@ -8,9 +8,14 @@ const dbPath = rawUrl.startsWith("file:")
   ? rawUrl.slice("file:".length)
   : rawUrl;
 
+// Anchor relative paths to the backend root rather than process.cwd(), so
+// `npm run seed` from the repo root and `node dist/index.js` from backend/
+// open the same file instead of silently creating two databases.
+const BACKEND_ROOT = path.join(__dirname, "..", "..");
+
 const resolvedPath = path.isAbsolute(dbPath)
   ? dbPath
-  : path.join(process.cwd(), dbPath);
+  : path.join(BACKEND_ROOT, dbPath);
 
 export const db = new Database(resolvedPath);
 

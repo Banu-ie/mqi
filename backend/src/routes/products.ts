@@ -1,60 +1,51 @@
 import { Router } from "express";
 import { z } from "zod";
-import { Events } from "../db/models";
+import { Products } from "../db/models";
 import { requireAuth } from "../middleware/requireAuth";
 
-
-// We create and export the router from THIS file
 export const productsRouter = Router();
 
-// Your actual routes go here
-productsRouter.get("/", (req, res) => {
-  res.json({ message: "Products route working" });
-});
-export const eventsRouter = Router();
-
-const eventSchema = z.object({
-  title: z.string().min(1, "Başlıq tələb olunur."),
-  date: z.string().min(1, "Tarix tələb olunur."),
-  location: z.string().min(1, "Məkan tələb olunur."),
+const productSchema = z.object({
+  name: z.string().min(1, "Məhsul adı tələb olunur."),
+  price: z.number().nonnegative("Qiymət mənfi ola bilməz."),
+  category: z.string().min(1, "Kateqoriya tələb olunur."),
   shortDesc: z.string().min(1, "Qısa təsvir tələb olunur."),
   fullDesc: z.string().default(""),
   image: z.string().url("Şəkil düzgün URL olmalıdır.").or(z.literal("")),
-  status: z.enum(["upcoming", "past"]).default("upcoming"),
+  status: z.enum(["active", "inactive"]).default("active"),
 });
 
 /**
  * @swagger
- * /events:
+ * /products:
  *   get:
- *     summary: Bütün tədbirləri siyahıla
- *     tags: [Events]
+ *     summary: Bütün məhsulları siyahıla
+ *     tags: [Products]
  *     parameters:
  *       - in: query
- *         name: status
- *         schema: { type: string, enum: [upcoming, past] }
- *         description: Tədbirləri statusa görə filtrlə
+ *         name: all
+ *         schema: { type: boolean }
+ *         description: true olarsa, qeyri-aktiv məhsullar da daxil olur (admin üçün)
  *     responses:
  *       200:
- *         description: Tədbir siyahısı
+ *         description: Məhsul siyahısı
  *         content:
  *           application/json:
  *             schema:
  *               type: array
- *               items: { $ref: '#/components/schemas/Event' }
+ *               items: { $ref: '#/components/schemas/Product' }
  */
-eventsRouter.get("/", (req, res) => {
-  const status = req.query.status;
-  const filter = status === "upcoming" || status === "past" ? status : undefined;
-  res.json(Events.list(filter));
+productsRouter.get("/", (req, res) => {
+  const includeAll = req.query.all === "true";
+  res.json(Products.list(includeAll));
 });
 
 /**
  * @swagger
- * /events/{id}:
+ * /products/{id}:
  *   get:
- *     summary: Tək tədbiri ID ilə gətir
- *     tags: [Events]
+ *     summary: Tək məhsulu ID ilə gətir
+ *     tags: [Products]
  *     parameters:
  *       - in: path
  *         name: id
@@ -62,40 +53,40 @@ eventsRouter.get("/", (req, res) => {
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Tədbir
+ *         description: Məhsul
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Event' }
+ *             schema: { $ref: '#/components/schemas/Product' }
  *       404:
- *         description: Tədbir tapılmadı
+ *         description: Məhsul tapılmadı
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.get("/:id", (req, res) => {
-  const event = Events.get(req.params.id);
-  if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
-  res.json(event);
+productsRouter.get("/:id", (req, res) => {
+  const product = Products.get(req.params.id);
+  if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
+  res.json(product);
 });
 
 /**
  * @swagger
- * /events:
+ * /products:
  *   post:
- *     summary: Yeni tədbir yarat (yalnız admin)
- *     tags: [Events]
+ *     summary: Yeni məhsul yarat (yalnız admin)
+ *     tags: [Products]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/EventInput' }
+ *           schema: { $ref: '#/components/schemas/ProductInput' }
  *     responses:
  *       201:
- *         description: Yaradılan tədbir
+ *         description: Yaradılan məhsul
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Event' }
+ *             schema: { $ref: '#/components/schemas/Product' }
  *       400:
  *         description: Validasiya xətası
  *         content:
@@ -107,19 +98,19 @@ eventsRouter.get("/:id", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.post("/", requireAuth, (req, res) => {
-  const parsed = eventSchema.safeParse(req.body);
+productsRouter.post("/", requireAuth, (req, res) => {
+  const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const event = Events.create(parsed.data);
-  res.status(201).json(event);
+  const product = Products.create(parsed.data);
+  res.status(201).json(product);
 });
 
 /**
  * @swagger
- * /events/{id}:
+ * /products/{id}:
  *   put:
- *     summary: Tədbiri yenilə (yalnız admin)
- *     tags: [Events]
+ *     summary: Məhsulu yenilə (yalnız admin)
+ *     tags: [Products]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -130,38 +121,38 @@ eventsRouter.post("/", requireAuth, (req, res) => {
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/EventInput' }
+ *           schema: { $ref: '#/components/schemas/ProductInput' }
  *     responses:
  *       200:
- *         description: Yenilənmiş tədbir
+ *         description: Yenilənmiş məhsul
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Event' }
+ *             schema: { $ref: '#/components/schemas/Product' }
  *       400:
  *         description: Validasiya xətası
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  *       404:
- *         description: Tədbir tapılmadı
+ *         description: Məhsul tapılmadı
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.put("/:id", requireAuth, (req, res) => {
-  const parsed = eventSchema.partial().safeParse(req.body);
+productsRouter.put("/:id", requireAuth, (req, res) => {
+  const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const event = Events.update(req.params.id, parsed.data);
-  if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
-  res.json(event);
+  const product = Products.update(req.params.id, parsed.data);
+  if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
+  res.json(product);
 });
 
 /**
  * @swagger
- * /events/{id}:
+ * /products/{id}:
  *   delete:
- *     summary: Tədbiri sil (yalnız admin)
- *     tags: [Events]
+ *     summary: Məhsulu sil (yalnız admin)
+ *     tags: [Products]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - in: path
@@ -172,13 +163,13 @@ eventsRouter.put("/:id", requireAuth, (req, res) => {
  *       204:
  *         description: Silindi
  *       404:
- *         description: Tədbir tapılmadı
+ *         description: Məhsul tapılmadı
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.delete("/:id", requireAuth, (req, res) => {
-  const ok = Events.remove(req.params.id);
-  if (!ok) return res.status(404).json({ error: "Tədbir tapılmadı." });
+productsRouter.delete("/:id", requireAuth, (req, res) => {
+  const ok = Products.remove(req.params.id);
+  if (!ok) return res.status(404).json({ error: "Məhsul tapılmadı." });
   res.status(204).send();
 });

@@ -3,6 +3,26 @@ import bcrypt from "bcryptjs";
 import { db } from "./index";
 import { Admins, Categories, Products, Services, Events, SiteContent } from "./models";
 
+// Seeding is destructive by design (it replaces the demo catalogue), so it only
+// clears tables when SEED_RESET=true is passed explicitly. Without that flag the
+// seed tops up empty tables and leaves existing rows — safe to run against a
+// deployed database by accident.
+const RESET = process.env.SEED_RESET === "true";
+
+function replaceTable(table: string, rowCount: number, insert: () => void) {
+  const existing = (db.prepare(`SELECT COUNT(*) as count FROM ${table}`).get() as { count: number }).count;
+  if (existing > 0 && !RESET) {
+    console.log(`- ${table}: ${existing} row(s) already present, left untouched (SEED_RESET=true to replace)`);
+    return;
+  }
+  if (existing > 0) {
+    db.prepare(`DELETE FROM ${table}`).run();
+    console.log(`- ${table}: cleared ${existing} row(s) (SEED_RESET=true)`);
+  }
+  insert();
+  console.log(`- ${table}: inserted ${rowCount} row(s)`);
+}
+
 async function main() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@mqicma.az";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || "REDACTED";
@@ -21,7 +41,6 @@ async function main() {
     if (!existingCategories.has(`${category.name}::${category.type}`)) Categories.create(category);
   }
 
-  db.prepare("DELETE FROM products").run();
   const products = [
     ["Əl toxunması xalça", 85, "Əl işləri", "Ənənəvi Azərbaycan motivləri ilə toxunmuş dekorativ xalça."],
     ["Tikilmiş kənd köynəyi", 45, "Geyim", "Ənənəvi naxışlarla bəzədilmiş əl işi köynək."],
@@ -30,6 +49,7 @@ async function main() {
     ["Dekorativ yastıq üzü", 25, "Əl işləri", "Rəngli saplarla işlənmiş əl işi yastıq üzü."],
     ["Əl işi bilərzik", 15, "Aksesuarlar", "Muncuq və iplikdən hazırlanan əl işi bilərzik."],
   ] as const;
+  replaceTable("products", products.length, () => {
   for (const [name, price, category, shortDesc] of products) {
     const images: Record<string, string> = {
       "Əl toxunması xalça": "https://images.unsplash.com/photo-1534413340928-7bd74b65196f?w=600&h=500&fit=crop&auto=format",
@@ -41,8 +61,8 @@ async function main() {
     };
     Products.create({ name, price, category, shortDesc, fullDesc: shortDesc, image: images[name], status: "active" });
   }
+  });
 
-  db.prepare("DELETE FROM services").run();
   const services = [
     ["Dərzilik xidməti", "Professional tikinti xidmətləri — gündəlik geyimdən tutmuş xüsusi mərasim paltarlarına qədər."],
     ["Toxuculuq", "Ənənəvi toxuculuq sənətini öyrənin və ya hazır məhsul sifariş edin."],
@@ -50,6 +70,7 @@ async function main() {
     ["Sahibkarlıq və biznes təlimləri", "Öz biznesinizi qurmaq üçün lazım olan biliklər — biznes planlaşdırması, marketinq, maliyyə."],
     ["Psixoloji sessiyalar", "Peşəkar psixoloq dəstəyi ilə şəxsi inkişaf, stress idarəetmə və özünüifadə."],
   ] as const;
+  replaceTable("services", services.length, () => {
   for (const [name, description] of services) {
     const images: Record<string, string> = {
       "Dərzilik xidməti": "https://images.unsplash.com/photo-1457972657980-4c9fddebec8d?w=600&h=450&fit=crop&auto=format",
@@ -60,8 +81,8 @@ async function main() {
     };
     Services.create({ name, description, fullDesc: description, image: images[name], forWhom: "Qadınlar üçün.", benefits: [], status: "active" });
   }
+  });
 
-  db.prepare("DELETE FROM events").run();
   const events = [
     ["Əl işlərinin sərgi-satışı", "2025-12-15", "Mingəçevir, Mədəniyyət Sarayı", "İcma üzvlərinin hazırladığı əl işlərinin nümayiş edildiyi sərgi-satış tədbiri."],
     ["Sahibkarlıq mövzusunda seminar", "2025-12-22", "Mingəçevir, İcma Mərkəzi", "Qadın sahibkarlığını dəstəkləyən praktiki seminar."],
@@ -69,6 +90,7 @@ async function main() {
     ["İcmanın açılış tədbirı", "2025-10-20", "Mingəçevir, Mədəniyyət Evi", "Mingəçevir Qadın İcmasının rəsmi açılışı."],
     ["Psixoloji inkişaf sessiyası", "2025-11-15", "Mingəçevir, İcma Mərkəzi", "Özünüdərk və şəxsi inkişaf mövzusunda qrup sessiyası."],
   ] as const;
+  replaceTable("events", events.length, () => {
   for (const [title, date, location, shortDesc] of events) {
     const status = date < "2026-01-01" ? "past" : "upcoming";
     const images: Record<string, string> = {
@@ -80,8 +102,12 @@ async function main() {
     };
     Events.create({ title, date, location, shortDesc, fullDesc: shortDesc, image: images[title], status });
   }
+  });
 
-  SiteContent.upsert({
+  const contentExists = SiteContent.get() !== undefined;
+  if (contentExists && !RESET) {
+    console.log("- site_content: already configured, left untouched (SEED_RESET=true to replace)");
+  } else SiteContent.upsert({
     heroHeadline: "Mingəçevir Qadın İcması",
     heroSubtext: "Qadınların sosial və iqtisadi inkişafına, bacarıqlarının artırılmasına və yeni imkanlar qazanmasına dəstək oluruq.",
     aboutIntro: "Mingəçevir Qadın İcması 2025-ci ilin oktyabr ayında yaradılıb. İcmanın əsas məqsədi qadınların sosial və iqtisadi inkişafına dəstək olmaq, onların bilik və bacarıqlarını artırmaq, məşğulluq və sahibkarlıq imkanlarını genişləndirməkdir.",

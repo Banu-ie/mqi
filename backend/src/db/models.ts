@@ -12,6 +12,7 @@ export const Admins = {
 
 export interface CategoryRow { id: string; name: string; type: "product" | "service"; }
 export const Categories = {
+  get(id: string): CategoryRow | undefined { return db.prepare(`SELECT id, name, type FROM categories WHERE id = ?`).get(id) as CategoryRow | undefined; },
   list(type?: string): CategoryRow[] { return (type ? db.prepare(`SELECT id, name, type FROM categories WHERE type = ? ORDER BY name ASC`).all(type) : db.prepare(`SELECT id, name, type FROM categories ORDER BY name ASC`).all()) as CategoryRow[]; },
   create(input: { name: string; type: string }) { const id = randomUUID(); db.prepare(`INSERT INTO categories (id, name, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).run(id, input.name, input.type, now(), now()); return { id, ...input }; },
   update(id: string, input: Partial<{ name: string; type: string }>) { if (!db.prepare(`SELECT id FROM categories WHERE id = ?`).get(id)) return null; const fields: string[] = []; const values: unknown[] = []; if (input.name !== undefined) { fields.push("name = ?"); values.push(input.name); } if (input.type !== undefined) { fields.push("type = ?"); values.push(input.type); } fields.push("updated_at = ?"); values.push(now(), id); db.prepare(`UPDATE categories SET ${fields.join(", ")} WHERE id = ?`).run(...values); return db.prepare(`SELECT id, name, type FROM categories WHERE id = ?`).get(id) as CategoryRow; },
@@ -26,6 +27,8 @@ export const Products = {
   create(input: Omit<ProductRow, "id" | "createdAt" | "updatedAt">) { const id = randomUUID(); db.prepare(`INSERT INTO products (id, name, price, category, short_desc, full_desc, image, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, input.name, input.price, input.category, input.shortDesc, input.fullDesc, input.image, input.status, now(), now()); return this.get(id)!; },
   update(id: string, input: Partial<Omit<ProductRow, "id" | "createdAt" | "updatedAt">>) { if (!this.get(id)) return null; const map: Record<string, string> = { name: "name", price: "price", category: "category", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" }; const fields: string[] = []; const values: unknown[] = []; for (const [key, column] of Object.entries(map)) { const value = (input as Record<string, unknown>)[key]; if (value !== undefined) { fields.push(`${column} = ?`); values.push(value); } } if (!fields.length) return this.get(id)!; fields.push("updated_at = ?"); values.push(now(), id); db.prepare(`UPDATE products SET ${fields.join(", ")} WHERE id = ?`).run(...values); return this.get(id)!; },
   remove(id: string): boolean { return db.prepare(`DELETE FROM products WHERE id = ?`).run(id).changes > 0; },
+  countByCategory(category: string): number { return (db.prepare(`SELECT COUNT(*) as count FROM products WHERE category = ?`).get(category) as { count: number }).count; },
+  renameCategory(from: string, to: string): number { return db.prepare(`UPDATE products SET category = ?, updated_at = ? WHERE category = ?`).run(to, now(), from).changes; },
 };
 
 export interface ServiceRow { id: string; name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }

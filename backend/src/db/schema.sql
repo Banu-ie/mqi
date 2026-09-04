@@ -76,3 +76,14 @@ CREATE TABLE IF NOT EXISTS contact_messages (
   message TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Indexes for the columns the API actually filters and orders on. Without these
+-- every public list endpoint does a full table scan plus a sort.
+CREATE INDEX IF NOT EXISTS idx_products_status ON products (status);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON products (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_services_status ON services (status);
+CREATE INDEX IF NOT EXISTS idx_services_created_at ON services (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_events_status ON events (status);
+CREATE INDEX IF NOT EXISTS idx_events_date ON events (date);
+CREATE INDEX IF NOT EXISTS idx_contact_messages_created_at ON contact_messages (created_at DESC);

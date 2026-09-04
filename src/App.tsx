@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -15,14 +16,16 @@ import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import Contact from "./pages/Contact";
 
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminProducts from "./pages/admin/AdminProducts";
-import AdminServices from "./pages/admin/AdminServices";
-import AdminEvents from "./pages/admin/AdminEvents";
-import AdminCategories from "./pages/admin/AdminCategories";
-import AdminContent from "./pages/admin/AdminContent";
-import AdminContact from "./pages/admin/AdminContact";
+// The admin panel is only reachable by a logged-in admin, so it is split into
+// its own chunk instead of being shipped to every public visitor.
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
+const AdminServices = lazy(() => import("./pages/admin/AdminServices"));
+const AdminEvents = lazy(() => import("./pages/admin/AdminEvents"));
+const AdminCategories = lazy(() => import("./pages/admin/AdminCategories"));
+const AdminContent = lazy(() => import("./pages/admin/AdminContent"));
+const AdminContact = lazy(() => import("./pages/admin/AdminContact"));
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,9 +37,13 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RouteSpinner() {
+  return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFF]"><div className="w-8 h-8 border-2 border-[#3B6FE0] border-t-transparent rounded-full animate-spin" /></div>;
+}
+
 function ProtectedAdmin({ children }: { children: React.ReactNode }) {
   const { admin, isLoading } = useAuth();
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#F8FAFF]"><div className="w-8 h-8 border-2 border-[#3B6FE0] border-t-transparent rounded-full animate-spin" /></div>;
+  if (isLoading) return <RouteSpinner />;
   if (!admin) return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 }
@@ -44,6 +51,7 @@ function ProtectedAdmin({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<RouteSpinner />}>
       <Routes>
         {/* Public routes */}
         <Route
@@ -199,6 +207,7 @@ function AppRoutes() {
         <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

@@ -1,67 +1,72 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ContactMessages } from "../db/models";
+import { SiteContent } from "../db/models";
 import { requireAuth } from "../middleware/requireAuth";
 
-
-// We create and export the router from THIS file
 export const contentRouter = Router();
 
-// Your actual routes go here
-contentRouter.get("/", (req, res) => {
-  res.json({ message: "Products route working" });
-});
-export const contactRouter = Router();
-
-const messageSchema = z.object({
-  name: z.string().min(1, "Ad tələb olunur."),
-  phone: z.string().min(1, "Telefon tələb olunur."),
-  message: z.string().min(1, "Mesaj tələb olunur."),
+const contentSchema = z.object({
+  heroHeadline: z.string().min(1),
+  heroSubtext: z.string().min(1),
+  aboutIntro: z.string().min(1),
+  mission: z.string().min(1),
+  phone: z.string().min(1),
+  email: z.string().email(),
+  instagram: z.string().min(1),
+  address: z.string().min(1),
 });
 
 /**
  * @swagger
- * /contact:
- *   post:
- *     summary: Əlaqə formundan mesaj göndər (ictimai)
- *     tags: [Contact]
+ * /content:
+ *   get:
+ *     summary: Sayt məzmununu gətir (hero, haqqımızda, əlaqə məlumatları)
+ *     tags: [Content]
+ *     responses:
+ *       200:
+ *         description: Sayt məzmunu
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/SiteContent' }
+ *       404:
+ *         description: Məzmun tapılmadı
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+contentRouter.get("/", (_req, res) => {
+  const content = SiteContent.get();
+  if (!content) return res.status(404).json({ error: "Məzmun tapılmadı." });
+  res.json(content);
+});
+
+/**
+ * @swagger
+ * /content:
+ *   put:
+ *     summary: Sayt məzmununu yenilə (yalnız admin)
+ *     tags: [Content]
+ *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/ContactMessageInput' }
+ *           schema: { $ref: '#/components/schemas/SiteContent' }
  *     responses:
- *       201:
- *         description: Mesaj qeydə alındı
+ *       200:
+ *         description: Yenilənmiş məzmun
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/SiteContent' }
  *       400:
  *         description: Validasiya xətası
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-contactRouter.post("/", (req, res) => {
-  const parsed = messageSchema.safeParse(req.body);
+contentRouter.put("/", requireAuth, (req, res) => {
+  const parsed = contentSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const saved = ContactMessages.create(parsed.data);
-  res.status(201).json(saved);
-});
-
-/**
- * @swagger
- * /contact:
- *   get:
- *     summary: Bütün əlaqə mesajlarını gətir (yalnız admin)
- *     tags: [Contact]
- *     security: [{ bearerAuth: [] }]
- *     responses:
- *       200:
- *         description: Mesaj siyahısı
- *       401:
- *         description: Token yoxdur və ya etibarsızdır
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-contactRouter.get("/", requireAuth, (_req, res) => {
-  res.json(ContactMessages.list());
+  const content = SiteContent.update(parsed.data);
+  res.json(content);
 });

@@ -7,12 +7,38 @@ import { listCategories } from "../../api/categories";
 import type { Product, Service, Event, Category } from "../../api/types";
 import { ErrorBanner, PageSpinner } from "../../components/ui/StatusStates";
 
-const activity = [
-  { text: "Yeni məhsul əlavə edildi: Əl toxunması xalça", time: "2 saat əvvəl", icon: "🛍️" },
-  { text: "Tədbir yeniləndi: Sahibkarlıq seminarı", time: "5 saat əvvəl", icon: "📅" },
-  { text: "Xidmət əlavə edildi: Psixoloji sessiyalar", time: "Dünən", icon: "⚙️" },
-  { text: "Məzmun yeniləndi: Ana səhifə mətni", time: "2 gün əvvəl", icon: "✏️" },
-];
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 1) return "indicə";
+  if (minutes < 60) return `${minutes} dəqiqə əvvəl`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} saat əvvəl`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return "dünən";
+  if (days < 30) return `${days} gün əvvəl`;
+  return new Date(iso).toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" });
+}
+
+interface ActivityItem { text: string; time: string; icon: string; sortKey: number }
+
+/** Newest changes across all content types, newest first. */
+function buildActivity(products: Product[], services: Service[], events: Event[]): ActivityItem[] {
+  const entries: ActivityItem[] = [];
+  const push = (icon: string, label: string, name: string, timestamp?: string) => {
+    if (!timestamp) return;
+    entries.push({
+      icon,
+      text: `${label}: ${name}`,
+      time: relativeTime(timestamp),
+      sortKey: new Date(timestamp).getTime(),
+    });
+  };
+  for (const p of products) push("🛍️", p.createdAt === p.updatedAt ? "Məhsul əlavə edildi" : "Məhsul yeniləndi", p.name, p.updatedAt);
+  for (const sv of services) push("⚙️", sv.createdAt === sv.updatedAt ? "Xidmət əlavə edildi" : "Xidmət yeniləndi", sv.name, sv.updatedAt);
+  for (const e of events) push("📅", e.createdAt === e.updatedAt ? "Tədbir əlavə edildi" : "Tədbir yeniləndi", e.title, e.updatedAt);
+  return entries.sort((a, b) => b.sortKey - a.sortKey).slice(0, 5);
+}
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,6 +50,7 @@ export default function AdminDashboard() {
   useEffect(() => { Promise.all([listProducts(true), listServices(true), listEvents(), listCategories()]).then(([p, s, e, c]) => { setProducts(p); setServices(s); setEvents(e); setCategories(c); }).catch((err) => setError(err instanceof Error ? err.message : "Dashboard yüklənmədi.")).finally(() => setLoading(false)); }, []);
   if (loading) return <PageSpinner label="Dashboard yüklənir..." />;
   if (error) return <ErrorBanner message={error} />;
+  const activity = buildActivity(products, services, events);
   const stats = [
     {
       label: "Məhsullar",
@@ -139,17 +166,21 @@ export default function AdminDashboard() {
         {/* Recent activity */}
         <div className="bg-white rounded-2xl border border-[#E4E9F4] p-6">
           <h2 className="font-semibold text-[#1A2540] mb-6">Son fəaliyyət</h2>
-          <div className="space-y-4">
-            {activity.map((a, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="text-xl flex-shrink-0 mt-0.5">{a.icon}</div>
-                <div>
-                  <p className="text-sm text-[#1A2540] leading-relaxed">{a.text}</p>
-                  <p className="text-xs text-[#6B7A99] mt-1">{a.time}</p>
+          {activity.length === 0 ? (
+            <p className="text-sm text-[#6B7A99] py-6 text-center">Hələ fəaliyyət yoxdur. Məhsul, xidmət və ya tədbir əlavə etdikdən sonra burada görünəcək.</p>
+          ) : (
+            <div className="space-y-4">
+              {activity.map((a, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="text-xl flex-shrink-0 mt-0.5">{a.icon}</div>
+                  <div>
+                    <p className="text-sm text-[#1A2540] leading-relaxed">{a.text}</p>
+                    <p className="text-xs text-[#6B7A99] mt-1">{a.time}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

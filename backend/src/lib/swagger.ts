@@ -1,3 +1,4 @@
+import path from "node:path";
 import swaggerJsdoc from "swagger-jsdoc";
 
 export const swaggerSpec = swaggerJsdoc({
@@ -169,5 +170,11 @@ export const swaggerSpec = swaggerJsdoc({
       },
     },
   },
-  apis: ["./src/routes/*.ts"],
+  // Resolved from this file rather than process.cwd(), and covering both the
+  // TypeScript sources (dev, via tsx) and the compiled output (production,
+  // where only dist/ is deployed). tsc preserves the JSDoc blocks.
+  apis: [
+    path.join(__dirname, "../routes/*.ts"),
+    path.join(__dirname, "../routes/*.js"),
+  ],
 });

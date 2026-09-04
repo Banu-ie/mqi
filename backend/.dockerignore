@@ -1,0 +1,11 @@
+node_modules
+dist
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.log
+.env
+.env.*
+!.env.example
+src/__tests__
