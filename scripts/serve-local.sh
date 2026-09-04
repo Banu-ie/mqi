@@ -43,10 +43,14 @@ pids+=($!)
 sleep 4
 cat <<INFO
 
-  Frontend   http://localhost:${FRONTEND_PORT}
-  Backend    http://localhost:${BACKEND_PORT}/api
-  Swagger    http://localhost:${BACKEND_PORT}/api/docs
+  Everything is on one origin — /api is proxied to the backend.
+
+  Site       http://localhost:${FRONTEND_PORT}
+  API        http://localhost:${FRONTEND_PORT}/api
+  Swagger    http://localhost:${FRONTEND_PORT}/api/docs
   Admin      http://localhost:${FRONTEND_PORT}/admin/login
+
+  (the backend also answers directly on :${BACKEND_PORT})
 
   Ctrl-C to stop both.
 INFO
