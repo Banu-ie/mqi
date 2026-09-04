@@ -26,6 +26,10 @@ export default function Navbar() {
     setOpen(false);
   }, [location]);
 
+  // Only the home page puts a dark hero behind the transparent navbar. Other
+  // pages show light background there, so they keep the dark link colour.
+  const overDarkHero = location.pathname === "/" && !scrolled;
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -48,6 +52,8 @@ export default function Navbar() {
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                   location.pathname === link.to
                     ? "text-[#3B6FE0] bg-[#EEF3FD]"
+                    : overDarkHero
+                    ? "text-white/90 hover:text-white hover:bg-white/15"
                     : scrolled
                     ? "text-[#1A2540] hover:text-[#3B6FE0] hover:bg-[#EEF3FD]"
                     : "text-[#1A2540] hover:text-[#3B6FE0] hover:bg-white/70"
@@ -68,7 +74,9 @@ export default function Navbar() {
             </Link>
             <button
               onClick={() => setOpen(!open)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg text-[#1A2540] hover:bg-[#EEF3FD] transition-colors"
+              className={`lg:hidden w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                overDarkHero ? "text-white hover:bg-white/15" : "text-[#1A2540] hover:bg-[#EEF3FD]"
+              }`}
               aria-label="Menu"
             >
               {open ? (

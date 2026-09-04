@@ -45,24 +45,82 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-[class*="text-[#3B6FE0]"] { color: #E9008C !important; }
-[class*="text-[#7C5CFC]"] { color: #A83DFF !important; }
-[class*="text-[#1A2540]"] { color: #29233D !important; }
-[class*="text-[#6B7A99]"] { color: #6F687D !important; }
-[class*="border-[#E4E9F4]"] { border-color: #EAE4EF !important; }
-[class*="bg-[#F8FAFF]"] { background-color: #FCFAFD !important; }
-[class*="bg-[#EEF3FD]"] { background-color: #FFF0F8 !important; }
-[class*="bg-[#F0F4FE]"] { background-color: #F4F0F7 !important; }
-[class*="bg-[#F3F0FF]"] { background-color: #F6EEFF !important; }
-[class*="bg-[#1A2540]"] { background-color: #29233D !important; }
-[class*="from-[#3B6FE0]"] { --tw-gradient-from: #E9008C var(--tw-gradient-from-position); }
-[class*="to-[#7C5CFC]"] { --tw-gradient-to: #A83DFF var(--tw-gradient-to-position); }
-[class*="to-[#3B6FE0]"] { --tw-gradient-to: #E9008C var(--tw-gradient-to-position); }
-[class*="from-[#1A2540]"] { --tw-gradient-from: #3A1238 var(--tw-gradient-from-position); }
-[class*="via-[#2D3B6B]"] { --tw-gradient-via: #7C1B72 var(--tw-gradient-via-position); }
-[class*="via-[#5B4FD4]"] { --tw-gradient-via: #D10A91 var(--tw-gradient-via-position); }
-[class*="from-black"] { --tw-gradient-from: rgba(41, 35, 61, 0.42) var(--tw-gradient-from-position); }
-[class*="focus:ring-2"]:focus { --tw-ring-color: rgba(233, 0, 140, 0.3) !important; }
+/* Brand overrides — generated from the utility classes actually present in the
+ * markup, mapping the original blue palette onto the MQİCMA brand colours.
+ *
+ * Three rules matter here:
+ *
+ * 1. Selectors use [class~="..."], which matches a whole class token, and each
+ *    variant is scoped to its own pseudo-class. A [class*="..."] substring
+ *    match would also hit `hover:` and `focus:` classes and repaint them in
+ *    their resting state.
+ *
+ * 2. Opacity modifiers are their own tokens, so `from-[#1A2540]/90` needs its
+ *    own rule. A substring match would hit it with the opaque colour and throw
+ *    the designed transparency away.
+ *
+ * 3. Gradient stops must be a bare colour. Tailwind v4 registers
+ *    --tw-gradient-{from,via,to} as @property syntax:"<color>" and keeps the
+ *    position in a separate --tw-gradient-*-position variable. Appending a
+ *    position (the Tailwind v3 form) makes the declaration invalid at
+ *    computed-value time, so it falls back to the initial value #0000 and the
+ *    gradient renders fully transparent — which hides white text entirely.
+ */
+[class~="bg-[#1A2540]"] { background-color: #29233D !important; }
+[class~="bg-[#3B6FE0]"] { background-color: #E9008C !important; }
+[class~="hover:bg-[#3B6FE0]"]:hover { background-color: #E9008C !important; }
+[class~="bg-[#6B7A99]"] { background-color: #6F687D !important; }
+[class~="bg-[#7C5CFC]"] { background-color: #A83DFF !important; }
+[class~="hover:bg-[#7C5CFC]"]:hover { background-color: #A83DFF !important; }
+[class~="bg-[#E4E9F4]"] { background-color: #EAE4EF !important; }
+[class~="bg-[#EEF3FD]"] { background-color: #FFF0F8 !important; }
+[class~="hover:bg-[#EEF3FD]"]:hover { background-color: #FFF0F8 !important; }
+[class~="bg-[#F0F4FE]"] { background-color: #F4F0F7 !important; }
+[class~="hover:bg-[#F0F4FE]"]:hover { background-color: #F4F0F7 !important; }
+[class~="bg-[#F3F0FF]"] { background-color: #F6EEFF !important; }
+[class~="bg-[#F8FAFF]"] { background-color: #FCFAFD !important; }
+[class~="hover:bg-[#F8FAFF]"]:hover { background-color: #FCFAFD !important; }
+[class~="border-[#3B6FE0]"] { border-color: #E9008C !important; }
+[class~="focus:border-[#3B6FE0]"]:focus { border-color: #E9008C !important; }
+[class~="hover:border-[#3B6FE0]"]:hover { border-color: #E9008C !important; }
+[class~="border-[#3B6FE0]/20"] { border-color: color-mix(in oklab, #E9008C 20%, transparent) !important; }
+[class~="hover:border-[#3B6FE0]/20"]:hover { border-color: color-mix(in oklab, #E9008C 20%, transparent) !important; }
+[class~="hover:border-[#7C5CFC]"]:hover { border-color: #A83DFF !important; }
+[class~="border-[#E4E9F4]"] { border-color: #EAE4EF !important; }
+[class~="divide-[#E4E9F4]"] > :not([hidden]) ~ :not([hidden]) { border-color: #EAE4EF !important; }
+[class~="from-[#1A2540]"] { --tw-gradient-from: #3A1238 !important; }
+[class~="from-[#1A2540]/30"] { --tw-gradient-from: color-mix(in oklab, #3A1238 30%, transparent) !important; }
+[class~="from-[#1A2540]/50"] { --tw-gradient-from: color-mix(in oklab, #3A1238 50%, transparent) !important; }
+[class~="from-[#1A2540]/60"] { --tw-gradient-from: color-mix(in oklab, #3A1238 60%, transparent) !important; }
+[class~="from-[#1A2540]/90"] { --tw-gradient-from: color-mix(in oklab, #3A1238 90%, transparent) !important; }
+[class~="from-[#3B6FE0]"] { --tw-gradient-from: #E9008C !important; }
+.group:hover [class~="group-hover:from-[#3B6FE0]"] { --tw-gradient-from: #E9008C !important; }
+[class~="hover:from-[#3B6FE0]"]:hover { --tw-gradient-from: #E9008C !important; }
+[class~="from-[#7C5CFC]"] { --tw-gradient-from: #A83DFF !important; }
+[class~="from-[#EEF3FD]"] { --tw-gradient-from: #FFF0F8 !important; }
+[class~="from-[#F8FAFF]"] { --tw-gradient-from: #FCFAFD !important; }
+[class~="placeholder-[#6B7A99]"]::placeholder { color: #6F687D !important; }
+[class~="focus:ring-[#3B6FE0]/30"]:focus { --tw-ring-color: color-mix(in oklab, #E9008C 30%, transparent) !important; }
+[class~="text-[#1A2540]"] { color: #29233D !important; }
+[class~="hover:text-[#1A2540]"]:hover { color: #29233D !important; }
+[class~="text-[#3B6FE0]"] { color: #E9008C !important; }
+.group:hover [class~="group-hover:text-[#3B6FE0]"] { color: #E9008C !important; }
+[class~="hover:text-[#3B6FE0]"]:hover { color: #E9008C !important; }
+[class~="text-[#6B7A99]"] { color: #6F687D !important; }
+[class~="text-[#7C5CFC]"] { color: #A83DFF !important; }
+[class~="hover:text-[#7C5CFC]"]:hover { color: #A83DFF !important; }
+[class~="to-[#3B6FE0]"] { --tw-gradient-to: #E9008C !important; }
+[class~="to-[#7C5CFC]"] { --tw-gradient-to: #A83DFF !important; }
+.group:hover [class~="group-hover:to-[#7C5CFC]"] { --tw-gradient-to: #A83DFF !important; }
+[class~="hover:to-[#7C5CFC]"]:hover { --tw-gradient-to: #A83DFF !important; }
+[class~="to-[#F3F0FF]"] { --tw-gradient-to: #F6EEFF !important; }
+[class~="via-[#1A2540]/70"] { --tw-gradient-via: color-mix(in oklab, #3A1238 70%, transparent) !important; }
+[class~="via-[#2D3B6B]"] { --tw-gradient-via: #7C1B72 !important; }
+[class~="via-[#5B4FD4]"] { --tw-gradient-via: #D10A91 !important; }
+[class~="via-[#EEF3FD]"] { --tw-gradient-via: #FFF0F8 !important; }
+[class~="from-black/30"] { --tw-gradient-from: color-mix(in oklab, #29233D 30%, transparent) !important; }
+
+[class*="focus:ring-2"]:focus { --tw-ring-color: color-mix(in oklab, #E9008C 30%, transparent) !important; }
 
 h1, h2, h3, h4 {
   font-family: 'DM Serif Display', serif;
