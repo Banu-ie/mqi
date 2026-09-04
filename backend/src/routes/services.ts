@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { Services } from "../db/models";
-import { requireAuth } from "../middleware/requireAuth";
+import { hasValidAdminToken, requireAuth } from "../middleware/requireAuth";
 
 export const servicesRouter = Router();
 
@@ -31,6 +31,7 @@ function serializeService<T extends { benefits: string }>(service: T) {
  *         required: false
  *         schema: { type: string, enum: ['true'] }
  *         description: "'true' olduqda deaktiv xidmətlər də qaytarılır"
+ *     security: [{}, { bearerAuth: [] }]
  *     responses:
  *       200:
  *         description: Xidmət siyahısı
@@ -39,9 +40,19 @@ function serializeService<T extends { benefits: string }>(service: T) {
  *             schema:
  *               type: array
  *               items: { $ref: '#/components/schemas/Service' }
+ *       401:
+ *         description: "all=true yalnız admin üçündür"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 servicesRouter.get("/", (req, res) => {
+  // The list itself is public, but `all=true` also returns inactive rows, which
+  // are unpublished drafts. That view is admin-only.
   const includeAll = req.query.all === "true";
+  if (includeAll && !hasValidAdminToken(req)) {
+    return res.status(401).json({ error: "Deaktiv xidmətləri görmək üçün giriş tələb olunur." });
+  }
   res.json(Services.list(includeAll).map(serializeService));
 });
 

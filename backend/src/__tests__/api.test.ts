@@ -262,3 +262,38 @@ test("oversized bodies are rejected with 413, not 500", async () => {
   });
   assert.equal(res.status, 413);
 });
+
+test("?all=true does not leak unpublished drafts to anonymous callers", async () => {
+  const draft = await api("/products", {
+    method: "POST",
+    token,
+    body: {
+      name: "Gizli qaralama",
+      price: 1,
+      category: "Test kateqoriya",
+      shortDesc: "unpublished",
+      image: "",
+      status: "inactive",
+    },
+  });
+  assert.equal(draft.status, 201);
+
+  // Public list must hide it.
+  const publicList = await api("/products");
+  assert.equal(publicList.status, 200);
+  const publicNames = (publicList.body as { name: string }[]).map((p) => p.name);
+  assert.ok(!publicNames.includes("Gizli qaralama"), "draft leaked into the public list");
+
+  // Asking for everything without a token must be refused, not served.
+  const anonymousAll = await api("/products?all=true");
+  assert.equal(anonymousAll.status, 401);
+
+  // With a token it is visible.
+  const adminAll = await api("/products?all=true", { token });
+  assert.equal(adminAll.status, 200);
+  assert.ok((adminAll.body as { name: string }[]).some((p) => p.name === "Gizli qaralama"));
+
+  // Same rule on services.
+  assert.equal((await api("/services?all=true")).status, 401);
+  assert.equal((await api("/services?all=true", { token })).status, 200);
+});

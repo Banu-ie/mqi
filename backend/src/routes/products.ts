@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { Products } from "../db/models";
-import { requireAuth } from "../middleware/requireAuth";
+import { hasValidAdminToken, requireAuth } from "../middleware/requireAuth";
 
 export const productsRouter = Router();
 
@@ -26,6 +26,7 @@ const productSchema = z.object({
  *         name: all
  *         schema: { type: boolean }
  *         description: true olarsa, qeyri-aktiv məhsullar da daxil olur (admin üçün)
+ *     security: [{}, { bearerAuth: [] }]
  *     responses:
  *       200:
  *         description: Məhsul siyahısı
@@ -34,9 +35,19 @@ const productSchema = z.object({
  *             schema:
  *               type: array
  *               items: { $ref: '#/components/schemas/Product' }
+ *       401:
+ *         description: "all=true yalnız admin üçündür"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 productsRouter.get("/", (req, res) => {
+  // The list itself is public, but `all=true` also returns inactive rows, which
+  // are unpublished drafts. That view is admin-only.
   const includeAll = req.query.all === "true";
+  if (includeAll && !hasValidAdminToken(req)) {
+    return res.status(401).json({ error: "Deaktiv məhsulları görmək üçün giriş tələb olunur." });
+  }
   res.json(Products.list(includeAll));
 });
 

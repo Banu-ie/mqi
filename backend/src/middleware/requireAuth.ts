@@ -27,3 +27,18 @@ export function requireAuth(
       .json({ error: "Sessiya etibarsızdır. Yenidən daxil olun." });
   }
 }
+
+/**
+ * True when the request carries a valid admin token. Unlike requireAuth this
+ * never rejects, so it can gate *parts* of an otherwise public endpoint.
+ */
+export function hasValidAdminToken(req: Request): boolean {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) return false;
+  try {
+    verifyAdminToken(header.slice("Bearer ".length));
+    return true;
+  } catch {
+    return false;
+  }
+}
