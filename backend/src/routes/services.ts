@@ -46,14 +46,14 @@ function serializeService<T extends { benefits: string }>(service: T) {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-servicesRouter.get("/", (req, res) => {
+servicesRouter.get("/", async (req, res) => {
   // The list itself is public, but `all=true` also returns inactive rows, which
   // are unpublished drafts. That view is admin-only.
   const includeAll = req.query.all === "true";
   if (includeAll && !hasValidAdminToken(req)) {
     return res.status(401).json({ error: "Deaktiv xidmətləri görmək üçün giriş tələb olunur." });
   }
-  res.json(Services.list(includeAll).map(serializeService));
+  res.json((await Services.list(includeAll)).map(serializeService));
 });
 
 /**
@@ -79,8 +79,8 @@ servicesRouter.get("/", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-servicesRouter.get("/:id", (req, res) => {
-  const service = Services.get(req.params.id);
+servicesRouter.get("/:id", async (req, res) => {
+  const service = await Services.get(req.params.id);
   if (!service) return res.status(404).json({ error: "Xidmət tapılmadı." });
   res.json(serializeService(service));
 });
@@ -114,10 +114,10 @@ servicesRouter.get("/:id", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-servicesRouter.post("/", requireAuth, (req, res) => {
+servicesRouter.post("/", requireAuth, async (req, res) => {
   const parsed = serviceSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  res.status(201).json(serializeService(Services.create(parsed.data)));
+  res.status(201).json(serializeService(await Services.create(parsed.data)));
 });
 
 /**
@@ -159,10 +159,10 @@ servicesRouter.post("/", requireAuth, (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-servicesRouter.put("/:id", requireAuth, (req, res) => {
+servicesRouter.put("/:id", requireAuth, async (req, res) => {
   const parsed = serviceSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const service = Services.update(req.params.id, parsed.data);
+  const service = await Services.update(req.params.id, parsed.data);
   if (!service) return res.status(404).json({ error: "Xidmət tapılmadı." });
   res.json(serializeService(service));
 });
@@ -193,7 +193,7 @@ servicesRouter.put("/:id", requireAuth, (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-servicesRouter.delete("/:id", requireAuth, (req, res) => {
-  if (!Services.remove(req.params.id)) return res.status(404).json({ error: "Xidmət tapılmadı." });
+servicesRouter.delete("/:id", requireAuth, async (req, res) => {
+  if (!(await Services.remove(req.params.id))) return res.status(404).json({ error: "Xidmət tapılmadı." });
   res.status(204).send();
 });

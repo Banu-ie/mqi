@@ -5,6 +5,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./lib/swagger";
+import { runMigrations, SCHEMA } from "./db";
 import { authRouter } from "./routes/auth";
 import { productsRouter } from "./routes/products";
 import { servicesRouter } from "./routes/services";
@@ -92,7 +93,18 @@ export { app };
 // Only bind a port when started as a program. Importing this module (the test
 // suite does) should build the app without occupying a port.
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`MQİCMA backend running on http://localhost:${PORT}`);
-  });
+  // Migrations run once at startup, before the port opens, so the process
+  // never serves traffic against a schema that is not ready yet.
+  runMigrations()
+    .then((applied) => {
+      console.log(`Database schema: ${SCHEMA}`);
+      if (applied.length) console.log(`Applied migrations: ${applied.join(", ")}`);
+      app.listen(PORT, () => {
+        console.log(`MQİCMA backend running on http://localhost:${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error("Failed to prepare the database:", error);
+      process.exit(1);
+    });
 }

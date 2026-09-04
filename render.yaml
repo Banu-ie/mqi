@@ -1,35 +1,32 @@
-# Render Blueprint — deploys the backend, the static frontend, and a persistent
-# disk for the SQLite database in one go.
+# Render Blueprint — backend web service plus the static frontend.
 #
 # Apply with:  Render dashboard → New → Blueprint → point at this repository.
 #
-# IMPORTANT: a persistent disk requires a paid instance type. On the free tier
-# the filesystem is wiped on every deploy and all data is lost, so the disk
-# below is what makes SQLite viable in production.
+# State lives in managed PostgreSQL (Neon), so the backend is stateless: no
+# persistent disk, and therefore no paid instance type required for durability.
 services:
   - type: web
     name: mqicma-backend
     runtime: node
-    plan: starter          # required for `disk`; free plans have no persistence
     rootDir: backend
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: mqicma-sqlite
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: DATABASE_URL
-        value: file:/data/mqicma.db
+        sync: false          # Neon pooled connection string (a secret)
+      - key: DATABASE_SCHEMA
+        value: mqicma
+      - key: DATABASE_POOL_MAX
+        value: "10"
       - key: JWT_SECRET
-        generateValue: true   # Render generates and stores a strong secret
+        generateValue: true  # Render generates and stores a strong secret
       - key: TRUST_PROXY
         value: "true"
       - key: CORS_ORIGIN
-        sync: false           # set to the deployed frontend origin
+        sync: false          # leave empty when using the single-origin rewrite
       - key: SEED_ADMIN_EMAIL
         sync: false
       - key: SEED_ADMIN_PASSWORD
@@ -41,10 +38,19 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     envVars:
+      # Leave UNSET for the single-origin setup below: the frontend then calls
+      # same-origin /api and the rewrite forwards it to the backend, so there is
+      # no CORS and the backend host never appears in the JS bundle.
+      # Set it to https://<backend-host>/api only if you drop the rewrite.
       - key: VITE_API_URL
-        sync: false           # https://<backend-host>/api
+        sync: false
     routes:
-      # Single-page app: every unmatched path must serve index.html, otherwise a
+      # Single origin: forward the API to the backend service. Replace the
+      # destination host with the deployed backend URL.
+      - type: rewrite
+        source: /api/*
+        destination: https://mqicma-backend.onrender.com/api/*
+      # Single-page app: every other unmatched path serves index.html, or a
       # refresh on /mehsullar or /admin/dashboard returns a 404.
       - type: rewrite
         source: /*

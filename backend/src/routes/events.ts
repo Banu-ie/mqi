@@ -35,10 +35,10 @@ const eventSchema = z.object({
  *               type: array
  *               items: { $ref: '#/components/schemas/Event' }
  */
-eventsRouter.get("/", (req, res) => {
+eventsRouter.get("/", async (req, res) => {
   const status = req.query.status;
   const filter = status === "upcoming" || status === "past" ? status : undefined;
-  res.json(Events.list(filter));
+  res.json(await Events.list(filter));
 });
 
 /**
@@ -64,8 +64,8 @@ eventsRouter.get("/", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.get("/:id", (req, res) => {
-  const event = Events.get(req.params.id);
+eventsRouter.get("/:id", async (req, res) => {
+  const event = await Events.get(req.params.id);
   if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
   res.json(event);
 });
@@ -99,10 +99,10 @@ eventsRouter.get("/:id", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.post("/", requireAuth, (req, res) => {
+eventsRouter.post("/", requireAuth, async (req, res) => {
   const parsed = eventSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const event = Events.create(parsed.data);
+  const event = await Events.create(parsed.data);
   res.status(201).json(event);
 });
 
@@ -140,10 +140,10 @@ eventsRouter.post("/", requireAuth, (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.put("/:id", requireAuth, (req, res) => {
+eventsRouter.put("/:id", requireAuth, async (req, res) => {
   const parsed = eventSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const event = Events.update(req.params.id, parsed.data);
+  const event = await Events.update(req.params.id, parsed.data);
   if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
   res.json(event);
 });
@@ -169,8 +169,8 @@ eventsRouter.put("/:id", requireAuth, (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-eventsRouter.delete("/:id", requireAuth, (req, res) => {
-  const ok = Events.remove(req.params.id);
+eventsRouter.delete("/:id", requireAuth, async (req, res) => {
+  const ok = await Events.remove(req.params.id);
   if (!ok) return res.status(404).json({ error: "Tədbir tapılmadı." });
   res.status(204).send();
 });

@@ -34,8 +34,8 @@ const contentSchema = z.object({
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-contentRouter.get("/", (_req, res) => {
-  const content = SiteContent.get();
+contentRouter.get("/", async (_req, res) => {
+  const content = await SiteContent.get();
   if (!content) return res.status(404).json({ error: "Məzmun tapılmadı." });
   res.json(content);
 });
@@ -64,9 +64,9 @@ contentRouter.get("/", (_req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-contentRouter.put("/", requireAuth, (req, res) => {
+contentRouter.put("/", requireAuth, async (req, res) => {
   const parsed = contentSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const content = SiteContent.update(parsed.data);
+  const content = await SiteContent.update(parsed.data);
   res.json(content);
 });

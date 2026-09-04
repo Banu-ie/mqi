@@ -1,18 +1,21 @@
-// End-to-end API tests. Each run gets a throwaway SQLite file so the suite can
-// never touch dev.db or a deployed database.
+// End-to-end API tests. Each run creates a uniquely named PostgreSQL schema and
+// drops it afterwards, so the suite can never touch development or deployed
+// data even when pointed at a shared database.
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import crypto from "node:crypto";
 import test, { after, before } from "node:test";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
 
-const TEST_DB = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "mqicma-test-")), "test.db");
+const TEST_SCHEMA = `test_${crypto.randomBytes(6).toString("hex")}`;
 
 // Must be set before the app (and therefore the db module) is imported.
 // dotenv does not overwrite variables that are already present.
-process.env.DATABASE_URL = `file:${TEST_DB}`;
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL ||
+  process.env.DATABASE_URL_TEST ||
+  "postgresql://127.0.0.1:5432/mqicma_test";
+process.env.DATABASE_SCHEMA = TEST_SCHEMA;
 process.env.JWT_SECRET = "test-only-secret-not-used-anywhere-else";
 process.env.CORS_ORIGIN = "http://localhost:5173";
 
@@ -47,16 +50,26 @@ async function api(
   return { status: response.status, body };
 }
 
+let closeDb: () => Promise<void>;
+let dropSchema: () => Promise<void>;
+
 before(async () => {
-  const [{ app }, { Admins }, bcryptModule] = await Promise.all([
+  const [{ app }, dbModule, { Admins }, bcryptModule] = await Promise.all([
     import("../index.js"),
+    import("../db/index.js"),
     import("../db/models.js"),
     import("bcryptjs"),
   ]);
   // bcryptjs is CommonJS: the callables hang off the default export.
   const bcrypt = bcryptModule.default;
 
-  Admins.upsert({
+  await dbModule.runMigrations();
+  closeDb = dbModule.closeDb;
+  dropSchema = async () => {
+    await dbModule.pool.query(`DROP SCHEMA IF EXISTS "${TEST_SCHEMA}" CASCADE`);
+  };
+
+  await Admins.upsert({
     name: "Test Admin",
     email: ADMIN_EMAIL,
     passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10),
@@ -69,9 +82,10 @@ before(async () => {
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 
-after(() => {
+after(async () => {
   server?.close();
-  fs.rmSync(path.dirname(TEST_DB), { recursive: true, force: true });
+  await dropSchema?.();
+  await closeDb?.();
 });
 
 test("health endpoint responds", async () => {

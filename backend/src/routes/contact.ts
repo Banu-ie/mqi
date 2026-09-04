@@ -31,10 +31,10 @@ const messageSchema = z.object({
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-contactRouter.post("/", (req, res) => {
+contactRouter.post("/", async (req, res) => {
   const parsed = messageSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const saved = ContactMessages.create(parsed.data);
+  const saved = await ContactMessages.create(parsed.data);
   res.status(201).json(saved);
 });
 
@@ -54,6 +54,6 @@ contactRouter.post("/", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-contactRouter.get("/", requireAuth, (_req, res) => {
-  res.json(ContactMessages.list());
+contactRouter.get("/", requireAuth, async (_req, res) => {
+  res.json(await ContactMessages.list());
 });

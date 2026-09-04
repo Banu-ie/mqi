@@ -1,66 +1,253 @@
-import { randomUUID } from "node:crypto";
-import { db } from "./index";
+import { execute, query, queryOne, withTransaction } from "./index";
 
-const now = () => new Date().toISOString();
+/**
+ * Builds the SET clause for a partial update.
+ * Returns undefined when the input contains no updatable fields.
+ */
+function buildUpdate(
+  input: Record<string, unknown>,
+  columns: Record<string, string>,
+): { clause: string; values: unknown[] } | undefined {
+  const parts: string[] = [];
+  const values: unknown[] = [];
+  for (const [key, column] of Object.entries(columns)) {
+    const value = input[key];
+    if (value !== undefined) {
+      values.push(value);
+      parts.push(`${column} = $${values.length}`);
+    }
+  }
+  if (parts.length === 0) return undefined;
+  parts.push("updated_at = now()");
+  return { clause: parts.join(", "), values };
+}
 
 export interface AdminRow { id: string; name: string; email: string; passwordHash: string; role: string; }
+const ADMIN_SELECT = `SELECT id, name, email, password_hash AS "passwordHash", role FROM admins`;
 export const Admins = {
-  findByEmail(email: string): AdminRow | undefined { return db.prepare(`SELECT id, name, email, password_hash as passwordHash, role FROM admins WHERE email = ?`).get(email) as AdminRow | undefined; },
-  findById(id: string): AdminRow | undefined { return db.prepare(`SELECT id, name, email, password_hash as passwordHash, role FROM admins WHERE id = ?`).get(id) as AdminRow | undefined; },
-  upsert(input: { name: string; email: string; passwordHash: string; role?: string }) { const existing = this.findByEmail(input.email); if (existing) return existing; const id = randomUUID(); db.prepare(`INSERT INTO admins (id, name, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(id, input.name, input.email, input.passwordHash, input.role || "admin", now(), now()); return this.findById(id)!; },
+  findByEmail(email: string) { return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE email = $1`, [email]); },
+  findById(id: string) { return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE id = $1`, [id]); },
+  async upsert(input: { name: string; email: string; passwordHash: string; role?: string }): Promise<AdminRow> {
+    const existing = await this.findByEmail(input.email);
+    if (existing) return existing;
+    const rows = await query<AdminRow>(
+      `INSERT INTO admins (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
+       RETURNING id, name, email, password_hash AS "passwordHash", role`,
+      [input.name, input.email, input.passwordHash, input.role || "admin"],
+    );
+    return rows[0];
+  },
 };
 
 export interface CategoryRow { id: string; name: string; type: "product" | "service"; }
+const CATEGORY_COLUMNS = { name: "name", type: "type" };
 export const Categories = {
-  get(id: string): CategoryRow | undefined { return db.prepare(`SELECT id, name, type FROM categories WHERE id = ?`).get(id) as CategoryRow | undefined; },
-  list(type?: string): CategoryRow[] { return (type ? db.prepare(`SELECT id, name, type FROM categories WHERE type = ? ORDER BY name ASC`).all(type) : db.prepare(`SELECT id, name, type FROM categories ORDER BY name ASC`).all()) as CategoryRow[]; },
-  create(input: { name: string; type: string }) { const id = randomUUID(); db.prepare(`INSERT INTO categories (id, name, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`).run(id, input.name, input.type, now(), now()); return { id, ...input }; },
-  update(id: string, input: Partial<{ name: string; type: string }>) { if (!db.prepare(`SELECT id FROM categories WHERE id = ?`).get(id)) return null; const fields: string[] = []; const values: unknown[] = []; if (input.name !== undefined) { fields.push("name = ?"); values.push(input.name); } if (input.type !== undefined) { fields.push("type = ?"); values.push(input.type); } fields.push("updated_at = ?"); values.push(now(), id); db.prepare(`UPDATE categories SET ${fields.join(", ")} WHERE id = ?`).run(...values); return db.prepare(`SELECT id, name, type FROM categories WHERE id = ?`).get(id) as CategoryRow; },
-  remove(id: string): boolean { return db.prepare(`DELETE FROM categories WHERE id = ?`).run(id).changes > 0; },
+  get(id: string) { return queryOne<CategoryRow>(`SELECT id, name, type FROM categories WHERE id = $1`, [id]); },
+  list(type?: string) {
+    return type
+      ? query<CategoryRow>(`SELECT id, name, type FROM categories WHERE type = $1 ORDER BY name ASC`, [type])
+      : query<CategoryRow>(`SELECT id, name, type FROM categories ORDER BY name ASC`);
+  },
+  async create(input: { name: string; type: string }): Promise<CategoryRow> {
+    const rows = await query<CategoryRow>(
+      `INSERT INTO categories (name, type) VALUES ($1, $2) RETURNING id, name, type`,
+      [input.name, input.type],
+    );
+    return rows[0];
+  },
+  async update(id: string, input: Partial<{ name: string; type: string }>): Promise<CategoryRow | null> {
+    const update = buildUpdate(input, CATEGORY_COLUMNS);
+    if (!update) return (await this.get(id)) ?? null;
+    const rows = await query<CategoryRow>(
+      `UPDATE categories SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING id, name, type`,
+      [...update.values, id],
+    );
+    return rows[0] ?? null;
+  },
+  async remove(id: string): Promise<boolean> {
+    return (await execute(`DELETE FROM categories WHERE id = $1`, [id])) > 0;
+  },
 };
 
 export interface ProductRow { id: string; name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
-const PRODUCT_SELECT = `SELECT id, name, price, category, short_desc as shortDesc, full_desc as fullDesc, image, status, created_at as createdAt, updated_at as updatedAt FROM products`;
+const PRODUCT_SELECT = `SELECT id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt" FROM products`;
+const PRODUCT_COLUMNS = { name: "name", price: "price", category: "category", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" };
 export const Products = {
-  list(includeInactive = false): ProductRow[] { const sql = includeInactive ? `${PRODUCT_SELECT} ORDER BY created_at DESC` : `${PRODUCT_SELECT} WHERE status = 'active' ORDER BY created_at DESC`; return db.prepare(sql).all() as ProductRow[]; },
-  get(id: string): ProductRow | undefined { return db.prepare(`${PRODUCT_SELECT} WHERE id = ?`).get(id) as ProductRow | undefined; },
-  create(input: Omit<ProductRow, "id" | "createdAt" | "updatedAt">) { const id = randomUUID(); db.prepare(`INSERT INTO products (id, name, price, category, short_desc, full_desc, image, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, input.name, input.price, input.category, input.shortDesc, input.fullDesc, input.image, input.status, now(), now()); return this.get(id)!; },
-  update(id: string, input: Partial<Omit<ProductRow, "id" | "createdAt" | "updatedAt">>) { if (!this.get(id)) return null; const map: Record<string, string> = { name: "name", price: "price", category: "category", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" }; const fields: string[] = []; const values: unknown[] = []; for (const [key, column] of Object.entries(map)) { const value = (input as Record<string, unknown>)[key]; if (value !== undefined) { fields.push(`${column} = ?`); values.push(value); } } if (!fields.length) return this.get(id)!; fields.push("updated_at = ?"); values.push(now(), id); db.prepare(`UPDATE products SET ${fields.join(", ")} WHERE id = ?`).run(...values); return this.get(id)!; },
-  remove(id: string): boolean { return db.prepare(`DELETE FROM products WHERE id = ?`).run(id).changes > 0; },
-  countByCategory(category: string): number { return (db.prepare(`SELECT COUNT(*) as count FROM products WHERE category = ?`).get(category) as { count: number }).count; },
-  renameCategory(from: string, to: string): number { return db.prepare(`UPDATE products SET category = ?, updated_at = ? WHERE category = ?`).run(to, now(), from).changes; },
+  list(includeInactive = false) {
+    return includeInactive
+      ? query<ProductRow>(`${PRODUCT_SELECT} ORDER BY created_at DESC`)
+      : query<ProductRow>(`${PRODUCT_SELECT} WHERE status = 'active' ORDER BY created_at DESC`);
+  },
+  get(id: string) { return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1`, [id]); },
+  async create(input: Omit<ProductRow, "id" | "createdAt" | "updatedAt">): Promise<ProductRow> {
+    const rows = await query<ProductRow>(
+      `INSERT INTO products (name, price, category, short_desc, full_desc, image, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
+      [input.name, input.price, input.category, input.shortDesc, input.fullDesc, input.image, input.status],
+    );
+    return rows[0];
+  },
+  async update(id: string, input: Partial<Omit<ProductRow, "id" | "createdAt" | "updatedAt">>): Promise<ProductRow | null> {
+    const update = buildUpdate(input as Record<string, unknown>, PRODUCT_COLUMNS);
+    if (!update) return (await this.get(id)) ?? null;
+    const rows = await query<ProductRow>(
+      `UPDATE products SET ${update.clause} WHERE id = $${update.values.length + 1}
+       RETURNING id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
+      [...update.values, id],
+    );
+    return rows[0] ?? null;
+  },
+  async remove(id: string): Promise<boolean> {
+    return (await execute(`DELETE FROM products WHERE id = $1`, [id])) > 0;
+  },
+  async countByCategory(category: string): Promise<number> {
+    const row = await queryOne<{ count: number }>(
+      `SELECT COUNT(*)::int AS count FROM products WHERE category = $1`,
+      [category],
+    );
+    return row?.count ?? 0;
+  },
+  renameCategory(from: string, to: string): Promise<number> {
+    return execute(`UPDATE products SET category = $1, updated_at = now() WHERE category = $2`, [to, from]);
+  },
 };
 
 export interface ServiceRow { id: string; name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
-const SERVICE_SELECT = `SELECT id, name, description, full_desc as fullDesc, image, for_whom as forWhom, benefits, status, created_at as createdAt, updated_at as updatedAt FROM services`;
+const SERVICE_FIELDS = `id, name, description, full_desc AS "fullDesc", image, for_whom AS "forWhom", benefits, status, created_at AS "createdAt", updated_at AS "updatedAt"`;
+const SERVICE_SELECT = `SELECT ${SERVICE_FIELDS} FROM services`;
+const SERVICE_COLUMNS = { name: "name", description: "description", fullDesc: "full_desc", image: "image", forWhom: "for_whom", benefits: "benefits", status: "status" };
 export const Services = {
-  list(includeInactive = false): ServiceRow[] { const sql = includeInactive ? `${SERVICE_SELECT} ORDER BY created_at DESC` : `${SERVICE_SELECT} WHERE status = 'active' ORDER BY created_at DESC`; return db.prepare(sql).all() as ServiceRow[]; },
-  get(id: string): ServiceRow | undefined { return db.prepare(`${SERVICE_SELECT} WHERE id = ?`).get(id) as ServiceRow | undefined; },
-  create(input: { name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: string }) { const id = randomUUID(); db.prepare(`INSERT INTO services (id, name, description, full_desc, image, for_whom, benefits, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, input.name, input.description, input.fullDesc, input.image, input.forWhom, JSON.stringify(input.benefits), input.status, now(), now()); return this.get(id)!; },
-  update(id: string, input: Partial<{ name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: string }>) { if (!this.get(id)) return null; const fields: string[] = []; const values: unknown[] = []; const entries: [string, unknown][] = [["name", input.name], ["description", input.description], ["full_desc", input.fullDesc], ["image", input.image], ["for_whom", input.forWhom], ["benefits", input.benefits === undefined ? undefined : JSON.stringify(input.benefits)], ["status", input.status]]; for (const [field, value] of entries) { if (value !== undefined) { fields.push(`${field} = ?`); values.push(value); } } if (!fields.length) return this.get(id)!; fields.push("updated_at = ?"); values.push(now(), id); db.prepare(`UPDATE services SET ${fields.join(", ")} WHERE id = ?`).run(...values); return this.get(id)!; },
-  remove(id: string): boolean { return db.prepare(`DELETE FROM services WHERE id = ?`).run(id).changes > 0; },
+  list(includeInactive = false) {
+    return includeInactive
+      ? query<ServiceRow>(`${SERVICE_SELECT} ORDER BY created_at DESC`)
+      : query<ServiceRow>(`${SERVICE_SELECT} WHERE status = 'active' ORDER BY created_at DESC`);
+  },
+  get(id: string) { return queryOne<ServiceRow>(`${SERVICE_SELECT} WHERE id = $1`, [id]); },
+  async create(input: { name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: string }): Promise<ServiceRow> {
+    const rows = await query<ServiceRow>(
+      `INSERT INTO services (name, description, full_desc, image, for_whom, benefits, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${SERVICE_FIELDS}`,
+      [input.name, input.description, input.fullDesc, input.image, input.forWhom, JSON.stringify(input.benefits), input.status],
+    );
+    return rows[0];
+  },
+  async update(id: string, input: Partial<{ name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: string }>): Promise<ServiceRow | null> {
+    const normalized: Record<string, unknown> = { ...input };
+    if (input.benefits !== undefined) normalized.benefits = JSON.stringify(input.benefits);
+    const update = buildUpdate(normalized, SERVICE_COLUMNS);
+    if (!update) return (await this.get(id)) ?? null;
+    const rows = await query<ServiceRow>(
+      `UPDATE services SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING ${SERVICE_FIELDS}`,
+      [...update.values, id],
+    );
+    return rows[0] ?? null;
+  },
+  async remove(id: string): Promise<boolean> {
+    return (await execute(`DELETE FROM services WHERE id = $1`, [id])) > 0;
+  },
 };
 
 export interface EventRow { id: string; title: string; date: string; location: string; shortDesc: string; fullDesc: string; image: string; status: "upcoming" | "past"; createdAt: string; updatedAt: string; }
-const EVENT_SELECT = `SELECT id, title, date, location, short_desc as shortDesc, full_desc as fullDesc, image, status, created_at as createdAt, updated_at as updatedAt FROM events`;
+const EVENT_FIELDS = `id, title, date, location, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt"`;
+const EVENT_SELECT = `SELECT ${EVENT_FIELDS} FROM events`;
+const EVENT_COLUMNS = { title: "title", date: "date", location: "location", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" };
 export const Events = {
-  list(status?: string): EventRow[] { const sql = status ? `${EVENT_SELECT} WHERE status = ? ORDER BY date ASC` : `${EVENT_SELECT} ORDER BY date ASC`; return (status ? db.prepare(sql).all(status) : db.prepare(sql).all()) as EventRow[]; },
-  get(id: string): EventRow | undefined { return db.prepare(`${EVENT_SELECT} WHERE id = ?`).get(id) as EventRow | undefined; },
-  create(input: Omit<EventRow, "id" | "createdAt" | "updatedAt">) { const id = randomUUID(); db.prepare(`INSERT INTO events (id, title, date, location, short_desc, full_desc, image, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, input.title, input.date, input.location, input.shortDesc, input.fullDesc, input.image, input.status, now(), now()); return this.get(id)!; },
-  update(id: string, input: Partial<Omit<EventRow, "id" | "createdAt" | "updatedAt">>) { if (!this.get(id)) return null; const map: Record<string, string> = { title: "title", date: "date", location: "location", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" }; const fields: string[] = []; const values: unknown[] = []; for (const [key, column] of Object.entries(map)) { const value = (input as Record<string, unknown>)[key]; if (value !== undefined) { fields.push(`${column} = ?`); values.push(value); } } if (!fields.length) return this.get(id)!; fields.push("updated_at = ?"); values.push(now(), id); db.prepare(`UPDATE events SET ${fields.join(", ")} WHERE id = ?`).run(...values); return this.get(id)!; },
-  remove(id: string): boolean { return db.prepare(`DELETE FROM events WHERE id = ?`).run(id).changes > 0; },
+  list(status?: string) {
+    return status
+      ? query<EventRow>(`${EVENT_SELECT} WHERE status = $1 ORDER BY date ASC`, [status])
+      : query<EventRow>(`${EVENT_SELECT} ORDER BY date ASC`);
+  },
+  get(id: string) { return queryOne<EventRow>(`${EVENT_SELECT} WHERE id = $1`, [id]); },
+  async create(input: Omit<EventRow, "id" | "createdAt" | "updatedAt">): Promise<EventRow> {
+    const rows = await query<EventRow>(
+      `INSERT INTO events (title, date, location, short_desc, full_desc, image, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${EVENT_FIELDS}`,
+      [input.title, input.date, input.location, input.shortDesc, input.fullDesc, input.image, input.status],
+    );
+    return rows[0];
+  },
+  async update(id: string, input: Partial<Omit<EventRow, "id" | "createdAt" | "updatedAt">>): Promise<EventRow | null> {
+    const update = buildUpdate(input as Record<string, unknown>, EVENT_COLUMNS);
+    if (!update) return (await this.get(id)) ?? null;
+    const rows = await query<EventRow>(
+      `UPDATE events SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING ${EVENT_FIELDS}`,
+      [...update.values, id],
+    );
+    return rows[0] ?? null;
+  },
+  async remove(id: string): Promise<boolean> {
+    return (await execute(`DELETE FROM events WHERE id = $1`, [id])) > 0;
+  },
 };
 
 export interface SiteContentRow { heroHeadline: string; heroSubtext: string; aboutIntro: string; mission: string; phone: string; email: string; instagram: string; address: string; }
-const CONTENT_SELECT = `SELECT hero_headline as heroHeadline, hero_subtext as heroSubtext, about_intro as aboutIntro, mission, phone, email, instagram, address FROM site_content WHERE id = 'site'`;
+const CONTENT_FIELDS = `hero_headline AS "heroHeadline", hero_subtext AS "heroSubtext", about_intro AS "aboutIntro", mission, phone, email, instagram, address`;
 export const SiteContent = {
-  get(): SiteContentRow | undefined { return db.prepare(CONTENT_SELECT).get() as SiteContentRow | undefined; },
-  upsert(input: SiteContentRow) { const existing = db.prepare(`SELECT id FROM site_content WHERE id = 'site'`).get(); if (existing) db.prepare(`UPDATE site_content SET hero_headline=?, hero_subtext=?, about_intro=?, mission=?, phone=?, email=?, instagram=?, address=?, updated_at=? WHERE id = 'site'`).run(input.heroHeadline, input.heroSubtext, input.aboutIntro, input.mission, input.phone, input.email, input.instagram, input.address, now()); else db.prepare(`INSERT INTO site_content (id, hero_headline, hero_subtext, about_intro, mission, phone, email, instagram, address, updated_at) VALUES ('site', ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(input.heroHeadline, input.heroSubtext, input.aboutIntro, input.mission, input.phone, input.email, input.instagram, input.address, now()); return this.get()!; },
-  update(input: Partial<SiteContentRow>) { const current = this.get(); return this.upsert({ ...(current || {}) as SiteContentRow, ...input }); },
+  get() { return queryOne<SiteContentRow>(`SELECT ${CONTENT_FIELDS} FROM site_content WHERE id = 'site'`); },
+  async upsert(input: SiteContentRow): Promise<SiteContentRow> {
+    const rows = await query<SiteContentRow>(
+      `INSERT INTO site_content (id, hero_headline, hero_subtext, about_intro, mission, phone, email, instagram, address, updated_at)
+       VALUES ('site', $1, $2, $3, $4, $5, $6, $7, $8, now())
+       ON CONFLICT (id) DO UPDATE SET
+         hero_headline = EXCLUDED.hero_headline,
+         hero_subtext  = EXCLUDED.hero_subtext,
+         about_intro   = EXCLUDED.about_intro,
+         mission       = EXCLUDED.mission,
+         phone         = EXCLUDED.phone,
+         email         = EXCLUDED.email,
+         instagram     = EXCLUDED.instagram,
+         address       = EXCLUDED.address,
+         updated_at    = now()
+       RETURNING ${CONTENT_FIELDS}`,
+      [input.heroHeadline, input.heroSubtext, input.aboutIntro, input.mission, input.phone, input.email, input.instagram, input.address],
+    );
+    return rows[0];
+  },
+  async update(input: Partial<SiteContentRow>): Promise<SiteContentRow> {
+    // Read-modify-write has to be atomic, or two concurrent partial edits can
+    // lose one another's fields.
+    return withTransaction(async (client) => {
+      const current = (
+        await client.query<SiteContentRow>(
+          `SELECT ${CONTENT_FIELDS} FROM site_content WHERE id = 'site' FOR UPDATE`,
+        )
+      ).rows[0];
+      const merged = { ...((current || {}) as SiteContentRow), ...input };
+      const rows = await client.query<SiteContentRow>(
+        `INSERT INTO site_content (id, hero_headline, hero_subtext, about_intro, mission, phone, email, instagram, address, updated_at)
+         VALUES ('site', $1, $2, $3, $4, $5, $6, $7, $8, now())
+         ON CONFLICT (id) DO UPDATE SET
+           hero_headline = EXCLUDED.hero_headline,
+           hero_subtext  = EXCLUDED.hero_subtext,
+           about_intro   = EXCLUDED.about_intro,
+           mission       = EXCLUDED.mission,
+           phone         = EXCLUDED.phone,
+           email         = EXCLUDED.email,
+           instagram     = EXCLUDED.instagram,
+           address       = EXCLUDED.address,
+           updated_at    = now()
+         RETURNING ${CONTENT_FIELDS}`,
+        [merged.heroHeadline, merged.heroSubtext, merged.aboutIntro, merged.mission, merged.phone, merged.email, merged.instagram, merged.address],
+      );
+      return rows.rows[0];
+    });
+  },
 };
 
 export interface ContactMessageRow { id: string; name: string; phone: string; message: string; createdAt: string; }
 export const ContactMessages = {
-  list(): ContactMessageRow[] { return db.prepare(`SELECT id, name, phone, message, created_at as createdAt FROM contact_messages ORDER BY created_at DESC`).all() as ContactMessageRow[]; },
-  create(input: { name: string; phone: string; message: string }) { const id = randomUUID(); const createdAt = now(); db.prepare(`INSERT INTO contact_messages (id, name, phone, message, created_at) VALUES (?, ?, ?, ?, ?)`).run(id, input.name, input.phone, input.message, createdAt); return { id, ...input, createdAt }; },
+  list() {
+    return query<ContactMessageRow>(
+      `SELECT id, name, phone, message, created_at AS "createdAt" FROM contact_messages ORDER BY created_at DESC`,
+    );
+  },
+  async create(input: { name: string; phone: string; message: string }): Promise<ContactMessageRow> {
+    const rows = await query<ContactMessageRow>(
+      `INSERT INTO contact_messages (name, phone, message) VALUES ($1, $2, $3)
+       RETURNING id, name, phone, message, created_at AS "createdAt"`,
+      [input.name, input.phone, input.message],
+    );
+    return rows[0];
+  },
 };

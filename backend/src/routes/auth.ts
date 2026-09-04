@@ -46,7 +46,7 @@ authRouter.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Email və şifrə tələb olunur." });
   }
   const { email, password } = parsed.data;
-  const admin = Admins.findByEmail(email);
+  const admin = await Admins.findByEmail(email);
   if (!admin) {
     return res.status(401).json({ error: "Email və ya şifrə yanlışdır." });
   }
@@ -78,7 +78,7 @@ authRouter.post("/login", async (req, res) => {
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 authRouter.get("/me", requireAuth, async (req: AuthedRequest, res) => {
-  const admin = Admins.findById(req.admin!.sub);
+  const admin = await Admins.findById(req.admin!.sub);
   if (!admin) return res.status(401).json({ error: "İstifadəçi tapılmadı." });
   return res.json({ admin: { id: admin.id, name: admin.name, email: admin.email, role: admin.role } });
 });

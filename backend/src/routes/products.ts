@@ -41,14 +41,14 @@ const productSchema = z.object({
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-productsRouter.get("/", (req, res) => {
+productsRouter.get("/", async (req, res) => {
   // The list itself is public, but `all=true` also returns inactive rows, which
   // are unpublished drafts. That view is admin-only.
   const includeAll = req.query.all === "true";
   if (includeAll && !hasValidAdminToken(req)) {
     return res.status(401).json({ error: "Deaktiv məhsulları görmək üçün giriş tələb olunur." });
   }
-  res.json(Products.list(includeAll));
+  res.json(await Products.list(includeAll));
 });
 
 /**
@@ -74,8 +74,8 @@ productsRouter.get("/", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-productsRouter.get("/:id", (req, res) => {
-  const product = Products.get(req.params.id);
+productsRouter.get("/:id", async (req, res) => {
+  const product = await Products.get(req.params.id);
   if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
   res.json(product);
 });
@@ -109,10 +109,10 @@ productsRouter.get("/:id", (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-productsRouter.post("/", requireAuth, (req, res) => {
+productsRouter.post("/", requireAuth, async (req, res) => {
   const parsed = productSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const product = Products.create(parsed.data);
+  const product = await Products.create(parsed.data);
   res.status(201).json(product);
 });
 
@@ -150,10 +150,10 @@ productsRouter.post("/", requireAuth, (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-productsRouter.put("/:id", requireAuth, (req, res) => {
+productsRouter.put("/:id", requireAuth, async (req, res) => {
   const parsed = productSchema.partial().safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  const product = Products.update(req.params.id, parsed.data);
+  const product = await Products.update(req.params.id, parsed.data);
   if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
   res.json(product);
 });
@@ -179,8 +179,8 @@ productsRouter.put("/:id", requireAuth, (req, res) => {
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-productsRouter.delete("/:id", requireAuth, (req, res) => {
-  const ok = Products.remove(req.params.id);
+productsRouter.delete("/:id", requireAuth, async (req, res) => {
+  const ok = await Products.remove(req.params.id);
   if (!ok) return res.status(404).json({ error: "Məhsul tapılmadı." });
   res.status(204).send();
 });

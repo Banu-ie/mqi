@@ -13,12 +13,12 @@ The site content is in Azerbaijani.
 | --- | --- |
 | Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4, React Router 7 |
 | Backend | Node.js, Express 4, TypeScript |
-| Database | SQLite via `better-sqlite3` (WAL mode) |
+| Database | PostgreSQL via `pg` (managed: Neon) |
 | Auth | JWT (12 h expiry) + bcrypt password hashing |
 | Validation | zod |
 | API docs | Swagger UI / OpenAPI 3 (`swagger-jsdoc`) |
 | Hardening | helmet, express-rate-limit, CORS allowlist, 100 kB body cap |
-| Tests | `node:test` via `tsx` |
+| Tests | `node:test` via `tsx`, against a throwaway PostgreSQL schema |
 
 ## Repository layout
 
@@ -30,20 +30,33 @@ The site content is in Azerbaijani.
 │   ├── context/          # AuthContext (token + current admin)
 │   └── pages/            # public pages + pages/admin/* panel
 ├── backend/
-│   ├── src/db/           # schema.sql, migrations, models, seed
+│   ├── src/db/
+│   │   ├── migrations/   # numbered .sql files, applied in order
+│   │   ├── index.ts      # pool, query helpers, migration runner
+│   │   ├── models.ts     # data access
+│   │   └── seed.ts       # demo catalogue + first admin
 │   ├── src/routes/       # Express routers, each carrying its Swagger JSDoc
 │   ├── src/lib/          # auth (JWT), swagger spec
-│   ├── src/middleware/   # requireAuth
+│   ├── src/middleware/   # requireAuth, hasValidAdminToken
 │   ├── src/__tests__/    # end-to-end API tests
 │   └── Dockerfile
-└── render.yaml           # Render blueprint: backend + frontend + disk
+├── render.yaml           # Render blueprint: backend + static frontend
+└── scripts/serve-local.sh
 ```
 
 ## Local development
 
-Two terminals. The backend must be running before the frontend can load data.
+Needs a PostgreSQL server. Two terminals; the backend must be running before
+the frontend can load data.
 
-### 1. Backend
+### 1. Database
+
+```bash
+createdb mqicma_dev
+createdb mqicma_test   # used by npm test
+```
+
+### 2. Backend
 
 ```bash
 cd backend
@@ -51,14 +64,14 @@ npm install
 cp .env.example .env
 # Generate a secret — the server refuses to start without one:
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
-# paste it into JWT_SECRET in .env
+# paste it into JWT_SECRET, and set DATABASE_URL, in .env
 
-npm run migrate   # create the schema (also runs automatically on boot)
+npm run migrate   # apply migrations (also runs automatically on boot)
 npm run seed      # optional demo catalogue + admin user
 npm run dev       # http://localhost:4000
 ```
 
-### 2. Frontend
+### 3. Frontend
 
 ```bash
 npm install
@@ -66,7 +79,7 @@ npm run dev       # http://localhost:5173
 ```
 
 `VITE_API_URL` defaults to `http://localhost:4000/api` in development, so no
-frontend `.env` is needed locally. Copy `.env.example` to `.env` to override it.
+frontend `.env` is needed locally.
 
 ### Admin access
 
@@ -76,44 +89,61 @@ The panel lives at `/admin/login`. `npm run seed` creates an admin from
 
 ## Environment variables
 
-Backend (`backend/.env`, template in `backend/.env.example`, production template
-in `backend/.env.production.example`):
+Backend (`backend/.env`; templates in `backend/.env.example` and
+`backend/.env.production.example`):
 
 | Variable | Required | Notes |
 | --- | --- | --- |
+| `DATABASE_URL` | **yes** | PostgreSQL connection string. Server exits on boot if unset. Use the *pooled* endpoint on Neon. |
 | `JWT_SECRET` | **yes** | Server exits on boot if unset. Use ≥48 random bytes. |
-| `DATABASE_URL` | no | `file:` URL. Relative paths resolve against `backend/`, not the shell's cwd. Default `file:./dev.db`. |
+| `DATABASE_SCHEMA` | no | Schema holding this app's tables. Default `mqicma`. |
+| `DATABASE_POOL_MAX` | no | Max pooled connections, default `10`. Keep low on serverless Postgres. |
 | `PORT` | no | Default `4000`. |
-| `CORS_ORIGIN` | no | Comma-separated allowlist. Default is the two local dev origins. |
+| `CORS_ORIGIN` | no | Comma-separated allowlist. Unnecessary in a single-origin deployment. |
 | `TRUST_PROXY` | no | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP. |
-| `SEED_ADMIN_EMAIL` | no | Read by `npm run seed` only. |
-| `SEED_ADMIN_PASSWORD` | no | Read by `npm run seed` only. |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no | Read by `npm run seed` only. |
+| `TEST_DATABASE_URL` | no | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`. |
 
 Frontend (`.env`, template in `.env.example`):
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `VITE_API_URL` | in production | Full API base URL including `/api`, no trailing slash. Baked in at build time. Falls back to same-origin `/api` in a production build. |
+| `VITE_API_URL` | no | Full API base URL including `/api`. Baked in at build time. Leave unset for a single-origin deployment — the app then calls same-origin `/api`. |
 
 Everything prefixed `VITE_` ships inside the JS bundle — never put a secret there.
 
 ## Database
 
-SQLite, with the schema in `backend/src/db/schema.sql`.
+PostgreSQL. All tables live in a dedicated schema (`DATABASE_SCHEMA`, default
+`mqicma`) rather than `public`, so the application can share a database without
+colliding with anything else already in it.
 
-- **Migrations** run automatically when the server boots, and on demand via
-  `npm run migrate`. The schema is written as `CREATE TABLE IF NOT EXISTS`, so
-  it is safe to re-run — but note there is no version tracking, so adding a
-  column to an existing database still needs a manual `ALTER TABLE`.
+- **Migrations** are numbered `.sql` files in `backend/src/db/migrations/`,
+  applied in filename order. Each runs once inside a transaction and is recorded
+  in a `schema_migrations` table, so re-running is a no-op. A Postgres advisory
+  lock stops two booting instances from racing. They run automatically at
+  startup before the port opens, and on demand via `npm run migrate`.
+- To change the schema, add a new numbered file. Never edit an applied one.
 - **Seeding** is non-destructive by default: `npm run seed` tops up empty tables
-  and leaves existing rows alone. Pass `SEED_RESET=true npm run seed` to
-  replace the demo catalogue. Never run the reset form against production.
+  and leaves existing rows alone. `SEED_RESET=true npm run seed` replaces the
+  demo catalogue. Never run the reset form against production.
 - **Tables**: `admins`, `categories`, `products`, `services`, `events`,
-  `site_content`, `contact_messages`, plus indexes on the columns the API filters
-  and sorts on.
-- Products reference their category **by name**, not by id. Category renames are
-  cascaded to products in a transaction, and deleting a category that still holds
+  `site_content`, `contact_messages`, plus indexes on the columns the API
+  filters and sorts on.
+- Products reference their category **by name**, not by id. Category renames
+  cascade to products in a transaction, and deleting a category that still holds
   products is rejected with `409`.
+
+> **"permission denied for database" on first run.** Creating the schema needs
+> `CREATE` on the database, which managed providers do not always grant to an
+> application role. Run this once as the database owner:
+>
+> ```sql
+> GRANT CREATE ON DATABASE your_database TO your_app_role;
+> ```
+>
+> Alternatively point `DATABASE_URL` at a database the role owns, or set
+> `DATABASE_SCHEMA=public` if nothing else uses that schema.
 
 ## API
 
@@ -128,8 +158,9 @@ Public: `GET /api/health`, `GET /api/products`, `GET /api/products/:id`,
 `POST /api/contact`.
 
 Requires a bearer token: every `POST`/`PUT`/`DELETE` on products, services,
-events and categories, plus `PUT /api/content`, `GET /api/contact` and
-`GET /api/auth/me`.
+events and categories, plus `PUT /api/content`, `GET /api/contact`,
+`GET /api/auth/me`, and the `?all=true` form of the product and service lists
+(which returns unpublished rows).
 
 Rate limits: 300 requests / 15 min across `/api`, 10 failed logins / 15 min on
 `/api/auth/login`, 5 submissions / hour on `POST /api/contact`.
@@ -140,15 +171,29 @@ Rate limits: 300 requests / 15 min across `/api`, 10 failed logins / 15 min on
 cd backend && npm test
 ```
 
-13 end-to-end tests covering auth, the CRUD round-trip, authorization on every
-write endpoint, validation rejection, category referential integrity, Swagger
-coverage and error status codes. Each run uses a throwaway SQLite file, so the
-suite never touches `dev.db` or a deployed database.
+End-to-end tests covering auth, the CRUD round-trip, authorization on every
+write endpoint, validation rejection, category referential integrity, draft
+visibility, Swagger coverage and error status codes. Each run creates a
+uniquely named PostgreSQL schema and drops it afterwards, so the suite cannot
+touch development or deployed data.
 
 ```bash
-npm run build              # frontend production build
-cd backend && npm run build   # backend tsc + schema copy
+npm run build                 # frontend production build
+cd backend && npm run build   # backend tsc + copy migrations
 ```
+
+## Running a local production deployment
+
+To exercise the real production path — actual builds, backend serving from
+`dist/`, frontend served as static files:
+
+```bash
+./scripts/serve-local.sh
+```
+
+It builds both halves, starts the backend on `:4000` and the static frontend on
+`:4173`, and stops both on Ctrl-C. Override with `BACKEND_PORT` /
+`FRONTEND_PORT`. Requires `backend/.env` with `DATABASE_URL` and `JWT_SECRET`.
 
 ## Deployment
 
@@ -157,59 +202,44 @@ cd backend && npm run build   # backend tsc + schema copy
                     │
                     ▼
        Static frontend (Vite build → CDN)
-                    │  HTTPS, VITE_API_URL
+                    │  /api/* rewritten to the backend (same origin)
                     ▼
-        Backend (Node/Express container)
+        Backend (Node/Express, stateless)
                     │
                     ▼
-        SQLite on a persistent volume
+          Managed PostgreSQL (Neon)
 ```
 
-`render.yaml` is a ready-to-apply Render blueprint for exactly this shape:
-backend web service, static frontend, and a 1 GB disk mounted at `/data`.
+Because all state is in managed Postgres, the backend is stateless: no
+persistent disk, and a redeploy cannot lose data.
+
+`render.yaml` is a ready-to-apply Render blueprint for this shape.
 `backend/Dockerfile` builds the same thing as a container for any Docker host.
 
 Deployment checklist:
 
-1. Backend: set `JWT_SECRET`, `DATABASE_URL=file:/data/mqicma.db`,
-   `TRUST_PROXY=true`, and `CORS_ORIGIN` to the frontend origin.
-2. Frontend: set `VITE_API_URL` to `https://<backend-host>/api` **before**
-   building — it is compiled into the bundle, not read at runtime.
-3. Point the SPA's unmatched routes at `index.html`, or refreshing
+1. Create the managed database and note the pooled connection string.
+2. Backend: set `DATABASE_URL`, `JWT_SECRET` and `TRUST_PROXY=true`. Migrations
+   run themselves on first boot.
+3. Frontend: leave `VITE_API_URL` unset and add a rewrite sending `/api/*` to
+   the backend. That keeps everything on one origin, so there is no CORS to
+   configure and the backend host never appears in the JS bundle — which also
+   means a domain change needs no rebuild.
+4. Point the SPA's other unmatched routes at `index.html`, or refreshing
    `/mehsullar` returns a 404.
-4. Create the first admin with `npm run seed` using a strong
+5. Create the first admin with `npm run seed` and a strong
    `SEED_ADMIN_PASSWORD`.
 
-> **The database needs a persistent volume.** SQLite stores data in a file; on a
-> host with an ephemeral filesystem (including Render's free tier) every deploy
-> starts from an empty database. Either attach a disk, as `render.yaml` does, or
-> migrate to managed Postgres.
+### Custom domain
 
-## Running a local production deployment
-
-To exercise the real production path — actual builds, backend serving from
-`dist/`, frontend served as static files — without a hosting account:
-
-```bash
-./scripts/serve-local.sh
-```
-
-It builds both halves, writes `.env.production` with the local API URL (the
-value is compiled into the bundle, so it must be set before the build), starts
-the backend on `:4000` and the static frontend on `:4173`, and stops both on
-Ctrl-C. Override with `BACKEND_PORT` / `FRONTEND_PORT`.
-
-Requires `backend/.env` with a `JWT_SECRET`; the script exits with an error if
-it is missing. Add the frontend origin to `CORS_ORIGIN` in `backend/.env`, or
-the browser's API calls are blocked:
-
-```
-CORS_ORIGIN="http://localhost:5173,http://localhost:4173"
-```
+With the single-origin setup, only the frontend needs the domain. Point the
+domain at the frontend host, let it issue the TLS certificate, and the API stays
+reachable at `https://your-domain/api`. Nothing has to be rebuilt or
+reconfigured on the backend.
 
 ## Live application
 
-Not deployed to a public host yet. Locally, via the script above:
+Not deployed to a public host yet. Locally, via `./scripts/serve-local.sh`:
 
 ```
 Frontend URL: http://localhost:4173
