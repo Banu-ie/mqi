@@ -26,6 +26,12 @@ export default function Navbar() {
     setOpen(false);
   }, [location]);
 
+  // The bar is translucent, so link contrast depends on what sits behind it.
+  // The home page puts a dark hero there; every other page shows the light
+  // page background, where near-white link text is unreadable. Once scrolled,
+  // the bar's own gradient is saturated enough to carry light text again.
+  const onDarkBackdrop = scrolled || location.pathname === "/";
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -50,7 +56,9 @@ export default function Navbar() {
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                   location.pathname === link.to
                     ? "bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)]"
-                    : "text-[#ece3ee]  hover:text-[#a2378d] hover:bg-white/10"
+                    : onDarkBackdrop
+                    ? "text-[#ece3ee] hover:text-white hover:bg-white/10"
+                    : "text-[#29233D] hover:text-[#a2378d] hover:bg-black/5"
                 }`}
               >
                 {link.label}
@@ -68,7 +76,9 @@ export default function Navbar() {
             </Link>
             <button
               onClick={() => setOpen(!open)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg text-white hover:bg-white/10 transition-colors"
+              className={`lg:hidden w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
+                onDarkBackdrop ? "text-white hover:bg-white/10" : "text-[#29233D] hover:bg-black/5"
+              }`}
               aria-label="Menu"
             >
               {open ? (
