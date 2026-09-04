@@ -195,6 +195,11 @@ It builds both halves, starts the backend on `:4000` and the static frontend on
 `:4173`, and stops both on Ctrl-C. Override with `BACKEND_PORT` /
 `FRONTEND_PORT`. Requires `backend/.env` with `DATABASE_URL` and `JWT_SECRET`.
 
+It builds *without* `VITE_API_URL`, so the bundle calls same-origin `/api` and
+Vite's preview server proxies that to the backend — the same single-origin shape
+as production, where the static host does the rewrite instead. So everything is
+reachable on `http://localhost:4173` alone, and there is no CORS in the picture.
+
 ## Deployment
 
 ```

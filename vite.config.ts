@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === 'development'
 
+  // Forward /api to the backend so the app is served from a single origin,
+  // matching the deployed setup where the static host rewrites /api/* to the
+  // backend. Keeps CORS out of the picture and lets VITE_API_URL stay unset.
+  const apiProxy = {
+    '/api': {
+      target: `http://127.0.0.1:${process.env.BACKEND_PORT || '4000'}`,
+      changeOrigin: false,
+    },
+  }
+
   return {
     base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
     build: {
@@ -32,10 +42,12 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      proxy: apiProxy,
     },
     preview: {
       host: '0.0.0.0',
       port: parseInt(process.env.PORT || '8443'),
+      proxy: apiProxy,
     },
   }
 })

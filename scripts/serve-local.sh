@@ -14,10 +14,10 @@ if [ ! -f "$ROOT/backend/.env" ]; then
   exit 1
 fi
 
-# VITE_API_URL is compiled into the bundle, so it has to be set before building.
-cat > "$ROOT/.env.production" <<ENV
-VITE_API_URL="http://localhost:${BACKEND_PORT}/api"
-ENV
+# Deliberately no VITE_API_URL: the bundle then calls same-origin /api, and the
+# preview server proxies that to the backend — the same shape as production,
+# where the static host rewrites /api/* instead.
+rm -f "$ROOT/.env.production"
 
 echo "==> building frontend"
 (cd "$ROOT" && npm run build >/dev/null)
@@ -36,8 +36,8 @@ echo "==> starting backend on :${BACKEND_PORT}"
 (cd "$ROOT/backend" && NODE_ENV=production PORT="$BACKEND_PORT" npm start) &
 pids+=($!)
 
-echo "==> starting frontend on :${FRONTEND_PORT}"
-(cd "$ROOT" && npx vite preview --port "$FRONTEND_PORT" --host 127.0.0.1) &
+echo "==> starting frontend on :${FRONTEND_PORT} (proxying /api to :${BACKEND_PORT})"
+(cd "$ROOT" && BACKEND_PORT="$BACKEND_PORT" npx vite preview --port "$FRONTEND_PORT" --host 127.0.0.1) &
 pids+=($!)
 
 sleep 4
