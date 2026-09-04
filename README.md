@@ -185,12 +185,35 @@ Deployment checklist:
 > starts from an empty database. Either attach a disk, as `render.yaml` does, or
 > migrate to managed Postgres.
 
-## Live application
+## Running a local production deployment
 
-Not yet deployed.
+To exercise the real production path — actual builds, backend serving from
+`dist/`, frontend served as static files — without a hosting account:
+
+```bash
+./scripts/serve-local.sh
+```
+
+It builds both halves, writes `.env.production` with the local API URL (the
+value is compiled into the bundle, so it must be set before the build), starts
+the backend on `:4000` and the static frontend on `:4173`, and stops both on
+Ctrl-C. Override with `BACKEND_PORT` / `FRONTEND_PORT`.
+
+Requires `backend/.env` with a `JWT_SECRET`; the script exits with an error if
+it is missing. Add the frontend origin to `CORS_ORIGIN` in `backend/.env`, or
+the browser's API calls are blocked:
 
 ```
-Frontend URL: —
-Backend URL:  —
-Swagger URL:  —
+CORS_ORIGIN="http://localhost:5173,http://localhost:4173"
+```
+
+## Live application
+
+Not deployed to a public host yet. Locally, via the script above:
+
+```
+Frontend URL: http://localhost:4173
+Backend URL:  http://localhost:4000/api
+Swagger URL:  http://localhost:4000/api/docs
+Admin panel:  http://localhost:4173/admin/login
 ```
