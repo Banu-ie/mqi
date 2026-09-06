@@ -15,6 +15,12 @@ services:
     runtime: node
     rootDir: backend
     plan: free
+    # The deployed service lives here. Note the database is in Neon's
+    # ap-southeast-1 (Singapore): `singapore` would put the two next to each
+    # other, but a region cannot be changed after a service is created, so this
+    # records where it actually is. Measured warm responses are ~250 ms either
+    # way, so moving it is not worth recreating the service.
+    region: oregon
     # build:all compiles the backend, then builds the frontend and copies it to
     # backend/public, which the server picks up automatically.
     buildCommand: npm ci && npm run build:all

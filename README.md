@@ -263,8 +263,19 @@ relative `/api` path, nothing has to be rebuilt or reconfigured.
 
 ## Live application
 
-Not deployed to a public host yet. Locally, via `./scripts/serve-local.sh`,
-everything is on one origin:
+Deployed on Render's free tier as a single web service:
+
+```
+Site:         https://mqicma.onrender.com
+API:          https://mqicma.onrender.com/api
+Swagger:      https://mqicma.onrender.com/api/docs
+Admin panel:  https://mqicma.onrender.com/admin/login
+```
+
+The free instance spins down after roughly 15 minutes without traffic, so the
+first request after an idle period takes 30-60 seconds while it wakes up.
+
+Locally, via `./scripts/serve-local.sh`, everything is on one origin too:
 
 ```
 Site:         http://localhost:4000
