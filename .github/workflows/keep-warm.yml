@@ -1,0 +1,45 @@
+# Render's free tier spins a service down after roughly 15 minutes without
+# traffic. While it wakes back up, Render's edge answers requests with a
+# plain-text 404 ("Not Found", x-render-routing: no-server) rather than holding
+# them, so a visitor arriving after a quiet spell sees an error instead of the
+# site. Pinging the health endpoint keeps the instance up.
+#
+# The free plan allows 750 instance-hours a month and a month of always-on is
+# about 744, so this fits — but only while this is the only free service in the
+# workspace. Delete this workflow if that changes, or if the service is upgraded
+# to a paid instance (which does not sleep and does not need pinging).
+name: Keep the Render service warm
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub queues scheduled runs and can delay them under
+    # load, which is fine: anything under the ~15 minute idle window works.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# Never let two pings overlap if a run is delayed.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ping the health endpoint
+        run: |
+          URL="https://mqicma.onrender.com/api/health"
+          for attempt in 1 2 3 4 5; do
+            # A sleeping instance needs a while to come back, hence the long
+            # timeout and the retries.
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
+            echo "attempt ${attempt}: HTTP ${code}"
+            if [ "$code" = "200" ]; then
+              echo "service is awake"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "service did not return 200 after 5 attempts"
+          exit 1
