@@ -1,15 +1,23 @@
-# Render Blueprint — backend web service plus the static frontend.
+# Render Blueprint — a single web service serving the API and the built React app.
 #
 # Apply with:  Render dashboard → New → Blueprint → point at this repository.
 #
-# State lives in managed PostgreSQL (Neon), so the backend is stateless: no
-# persistent disk, and therefore no paid instance type required for durability.
+# One service means one origin: the React bundle calls same-origin /api, so there
+# is no CORS to configure and no backend hostname baked into the frontend or into
+# this file. Whatever URL Render assigns, the site works — nothing here has to be
+# edited after the first deploy, and a custom domain needs no rebuild.
+#
+# State lives in managed PostgreSQL (Neon), so the service is stateless, with the
+# single exception of image uploads — see the `disk` note at the bottom.
 services:
   - type: web
-    name: mqicma-backend
+    name: mqicma
     runtime: node
     rootDir: backend
-    buildCommand: npm ci && npm run build
+    plan: free
+    # build:all compiles the backend, then builds the frontend and copies it to
+    # backend/public, which the server picks up automatically.
+    buildCommand: npm ci && npm run build:all
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -24,45 +32,14 @@ services:
       - key: JWT_SECRET
         generateValue: true  # Render generates and stores a strong secret
       - key: TRUST_PROXY
-        value: "true"
-      - key: CORS_ORIGIN
-        sync: false          # leave empty when using the single-origin rewrite
-      - key: SEED_ADMIN_EMAIL
-        sync: false
-      - key: SEED_ADMIN_PASSWORD
-        sync: false
-
-  - type: web
-    name: mqicma-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    envVars:
-      # Leave UNSET for the single-origin setup below: the frontend then calls
-      # same-origin /api and the rewrite forwards it to the backend, so there is
-      # no CORS and the backend host never appears in the JS bundle.
-      # Set it to https://<backend-host>/api only if you drop the rewrite.
-      - key: VITE_API_URL
-        sync: false
-    routes:
-      # Single origin: forward the API to the backend service. Replace the
-      # destination host with the deployed backend URL.
-      - type: rewrite
-        source: /api/*
-        destination: https://mqicma-backend.onrender.com/api/*
-      # Single-page app: every other unmatched path serves index.html, or a
-      # refresh on /mehsullar or /admin/dashboard returns a 404.
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-Frame-Options
-        value: SAMEORIGIN
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+        value: "true"        # so rate limiting sees the real client IP
+    # Uploaded images are written to backend/uploads. Without a disk they are
+    # wiped on every deploy while the database rows keep pointing at them, so
+    # admin-uploaded images would turn into broken links. A disk requires a paid
+    # instance, so it is left off here: uncomment this block and remove
+    # `plan: free` above once uploads need to survive a redeploy.
+    #
+    # disk:
+    #   name: uploads
+    #   mountPath: /opt/render/project/src/backend/uploads
+    #   sizeGB: 1

@@ -1,0 +1,11 @@
+# The image is built from the repository root; keep host artefacts out of it.
+**/node_modules
+**/dist
+backend/public
+backend/uploads
+**/.env
+**/.env.*
+!**/.env.example
+.git
+**/*.log
+**/.DS_Store

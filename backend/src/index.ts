@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import path from "node:path";
+import fs from "node:fs";
 import multer from "multer";
 import cors from "cors";
 import helmet from "helmet";
@@ -28,7 +29,23 @@ if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 
 // crossOriginResourcePolicy is relaxed so uploaded images can be loaded from
 // the frontend when it is served from a different origin.
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    // The SPA is served from this same origin, so the default CSP (which allows
+    // only 'self') would block the Google Fonts stylesheet and the remote
+    // imagery the site content links to. Everything else stays locked down.
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "img-src": ["'self'", "data:", "https:"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
+        "connect-src": ["'self'"],
+      },
+    },
+  }),
+);
 app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json({ limit: "100kb" }));
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -78,6 +95,25 @@ app.use("/api/contact", contactRouter);
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "Endpoint tapılmadı." });
 });
+
+// The built frontend is copied to backend/public at build time. When it is
+// present this process serves the site and the API from one origin: no CORS,
+// and no backend hostname to configure anywhere. When it is absent (local dev,
+// tests) the server stays API-only and Vite serves the frontend instead.
+const FRONTEND_DIR = path.join(process.cwd(), "public");
+
+if (fs.existsSync(path.join(FRONTEND_DIR, "index.html"))) {
+  // Asset filenames carry a content hash, so they are safe to cache forever.
+  // index.html must not be, or browsers keep booting the previous deploy.
+  app.use(express.static(FRONTEND_DIR, { index: false, maxAge: "1y" }));
+
+  app.use((req, res, next) => {
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+    // A miss under /api or /uploads is a genuine 404, not a client-side route.
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
+    res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+  });
+}
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   // Rejected uploads are client faults with a specific cause worth reporting.

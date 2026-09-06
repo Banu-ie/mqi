@@ -9,3 +9,6 @@ dist/
 *.db-shm
 *.db-wal
 *.log
+
+# Built frontend, copied here by `npm run build:web`.
+public/

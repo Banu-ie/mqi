@@ -1,17 +1,27 @@
+# The image serves the API and the built React app from one process, so it needs
+# both halves of the repository. Build it from the REPOSITORY ROOT:
+#
+#   docker build -f backend/Dockerfile -t mqicma .
+#
 # ---- build stage -------------------------------------------------------------
 # `pg` is pure JavaScript, so no native toolchain is needed.
 FROM node:22-slim AS build
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+# Dependencies first, so edits to source do not invalidate the install layers.
+COPY frontend/package.json frontend/package-lock.json ./frontend/
+RUN npm --prefix frontend ci
+COPY backend/package.json backend/package-lock.json ./backend/
+RUN npm --prefix backend ci
 
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
+COPY frontend ./frontend
+COPY backend ./backend
 
-# Reinstall without dev dependencies so only runtime deps are copied forward.
-RUN npm ci --omit=dev
+# Compile the backend, build the frontend, and place the frontend where the
+# server looks for it (backend/public). Then drop dev dependencies so only
+# runtime deps are carried into the final image.
+RUN npm --prefix backend run build:all \
+ && npm --prefix backend ci --omit=dev
 
 # ---- runtime stage -----------------------------------------------------------
 FROM node:22-slim AS runtime
@@ -20,12 +30,13 @@ ENV NODE_ENV=production
 ENV PORT=4000
 ENV TRUST_PROXY=true
 
-# State lives in managed PostgreSQL, so this image is stateless — no volume,
-# and a redeploy cannot lose data. DATABASE_URL and JWT_SECRET are injected at
-# runtime and are never baked into the image.
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package.json ./package.json
+# Durable state lives in managed PostgreSQL. The one exception is backend/uploads:
+# mount a volume there if admin-uploaded images must survive a redeploy.
+# DATABASE_URL and JWT_SECRET are injected at runtime, never baked into the image.
+COPY --from=build /app/backend/node_modules ./node_modules
+COPY --from=build /app/backend/dist ./dist
+COPY --from=build /app/backend/public ./public
+COPY --from=build /app/backend/package.json ./package.json
 
 USER node
 EXPOSE 4000

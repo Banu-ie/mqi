@@ -44,7 +44,7 @@ The site content is in Azerbaijani.
 │   ├── src/__tests__/    # end-to-end API tests
 │   ├── uploads/          # uploaded images (not in git)
 │   └── Dockerfile
-├── render.yaml           # Render blueprint: backend + static frontend
+├── render.yaml           # Render blueprint: one web service
 └── scripts/serve-local.sh
 ```
 
@@ -193,21 +193,19 @@ cd backend  && npm run build   # backend tsc + copy migrations
 
 ## Running a local production deployment
 
-To exercise the real production path — actual builds, backend serving from
-`dist/`, frontend served as static files:
+To exercise the real production path — actual builds, one process serving the
+API and the built React app together, exactly as deployed:
 
 ```bash
 ./scripts/serve-local.sh
 ```
 
-It builds both halves, starts the backend on `:4000` and the static frontend on
-`:4173`, and stops both on Ctrl-C. Override with `BACKEND_PORT` /
-`FRONTEND_PORT`. Requires `backend/.env` with `DATABASE_URL` and `JWT_SECRET`.
+It builds both halves and starts the server on `:4000` (override with `PORT`).
+Requires `backend/.env` with `DATABASE_URL` and `JWT_SECRET`.
 
-It builds *without* `VITE_API_URL`, so the bundle calls same-origin `/api` and
-Vite's preview server proxies that to the backend — the same single-origin shape
-as production, where the static host does the rewrite instead. So everything is
-reachable on `http://localhost:4173` alone, and there is no CORS in the picture.
+It builds *without* `VITE_API_URL`, so the bundle calls same-origin `/api` —
+and since the same process answers both, everything is reachable on
+`http://localhost:4000` alone and there is no CORS in the picture.
 
 ## Deployment
 
@@ -215,49 +213,62 @@ reachable on `http://localhost:4173` alone, and there is no CORS in the picture.
                  Internet
                     │
                     ▼
-       Static frontend (Vite build → CDN)
-                    │  /api/* rewritten to the backend (same origin)
-                    ▼
-        Backend (Node/Express, stateless)
+   One web service (Node/Express)
+     ├── /api/*      the JSON API
+     ├── /uploads/*  uploaded images
+     └── /*          the built React app (SPA fallback)
                     │
                     ▼
           Managed PostgreSQL (Neon)
 ```
 
-Because all state is in managed Postgres, the backend is stateless: no
-persistent disk, and a redeploy cannot lose data.
+The build copies the frontend's `dist/` to `backend/public/`, and the server
+serves it when present. One service means one origin, so **there is no CORS to
+configure and no backend hostname anywhere** — not in the JS bundle, not in
+`render.yaml`. Whatever URL the host assigns, the site works, and adding a
+custom domain needs no rebuild.
+
+Because all durable state is in managed Postgres, the service is stateless and a
+redeploy cannot lose data. The one exception is `backend/uploads/` — see below.
 
 `render.yaml` is a ready-to-apply Render blueprint for this shape.
-`backend/Dockerfile` builds the same thing as a container for any Docker host.
+`backend/Dockerfile` builds the same thing as a container (from the repo root:
+`docker build -f backend/Dockerfile -t mqicma .`).
 
 Deployment checklist:
 
-1. Create the managed database and note the pooled connection string.
-2. Backend: set `DATABASE_URL`, `JWT_SECRET` and `TRUST_PROXY=true`. Migrations
-   run themselves on first boot.
-3. Frontend: leave `VITE_API_URL` unset and add a rewrite sending `/api/*` to
-   the backend. That keeps everything on one origin, so there is no CORS to
-   configure and the backend host never appears in the JS bundle — which also
-   means a domain change needs no rebuild.
-4. Point the SPA's other unmatched routes at `index.html`, or refreshing
-   `/mehsullar` returns a 404.
-5. Create the first admin with `npm run seed` and a strong
-   `SEED_ADMIN_PASSWORD`.
+1. Create the managed database and note the *pooled* connection string.
+2. Set `DATABASE_URL`, `JWT_SECRET` and `TRUST_PROXY=true`. Migrations run
+   themselves on first boot; nothing else needs preparing.
+3. Build with `npm run build:all` and start with `npm start`. Leave
+   `VITE_API_URL` unset so the bundle calls same-origin `/api`.
+4. Create the first admin with `npm run seed:prod` and a strong
+   `SEED_ADMIN_PASSWORD`. Use `seed:prod` rather than `seed` in a deployed
+   environment: `seed` runs through `tsx`, a dev dependency that is absent when
+   `NODE_ENV=production`, while `seed:prod` runs the compiled `dist/db/seed.js`.
+
+> **Uploaded images need a disk.** Images posted through the admin panel are
+> written to `backend/uploads/`, not to Postgres. On a host with an ephemeral
+> filesystem (Render's free tier, and containers without a volume) every deploy
+> wipes them while the database rows keep pointing at `/uploads/...`, leaving
+> broken images. `render.yaml` carries a commented-out `disk:` block to enable
+> once that matters; a Render disk requires a paid instance type.
 
 ### Custom domain
 
-With the single-origin setup, only the frontend needs the domain. Point the
-domain at the frontend host, let it issue the TLS certificate, and the API stays
-reachable at `https://your-domain/api`. Nothing has to be rebuilt or
-reconfigured on the backend.
+There is only one service, so point the domain at it and let the host issue the
+TLS certificate. The API is then reachable at `https://your-domain/api` and the
+admin panel at `https://your-domain/admin/login`. Because the bundle uses a
+relative `/api` path, nothing has to be rebuilt or reconfigured.
 
 ## Live application
 
-Not deployed to a public host yet. Locally, via `./scripts/serve-local.sh`:
+Not deployed to a public host yet. Locally, via `./scripts/serve-local.sh`,
+everything is on one origin:
 
 ```
-Frontend URL: http://localhost:4173
-Backend URL:  http://localhost:4000/api
-Swagger URL:  http://localhost:4000/api/docs
-Admin panel:  http://localhost:4173/admin/login
+Site:         http://localhost:4000
+API:          http://localhost:4000/api
+Swagger:      http://localhost:4000/api/docs
+Admin panel:  http://localhost:4000/admin/login
 ```
