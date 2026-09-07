@@ -8,7 +8,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./lib/swagger";
-import { runMigrations, SCHEMA } from "./db";
+import { assertSchemaResolution, runMigrations, SCHEMA } from "./db";
 import { authRouter } from "./routes/auth";
 import { productsRouter } from "./routes/products";
 import { servicesRouter } from "./routes/services";
@@ -146,7 +146,9 @@ if (require.main === module) {
   // Migrations run once at startup, before the port opens, so the process
   // never serves traffic against a schema that is not ready yet.
   runMigrations()
-    .then((applied) => {
+    // Migrations create the schema, so this can only be checked afterwards.
+    .then(async (applied) => {
+      await assertSchemaResolution();
       console.log(`Database schema: ${SCHEMA}`);
       if (applied.length) console.log(`Applied migrations: ${applied.join(", ")}`);
       app.listen(PORT, () => {

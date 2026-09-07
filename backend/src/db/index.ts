@@ -29,10 +29,19 @@ export const pool = new Pool({
   idleTimeoutMillis: 30_000,
 });
 
-// Every connection in the pool resolves unqualified table names to our schema.
-pool.on("connect", (client) => {
-  client.query(`SET search_path TO "${SCHEMA}"`);
-});
+// How unqualified table names get resolved to SCHEMA is subtler than it looks,
+// and two tempting approaches are both wrong here:
+//
+//  - A `SET search_path` in a `pool.on("connect")` handler cannot be awaited, so
+//    it races the first real query. When the query wins, names resolve against
+//    the default search_path and silently hit whatever same-named tables live in
+//    `public`, surfacing as an intermittent "column ... does not exist".
+//  - A `search_path` connection startup option is rejected by Neon's pooled
+//    endpoint: "unsupported startup parameter in options: search_path".
+//
+// So the schema is made the *role's* default in runMigrations() instead. That is
+// stored server-side and re-applied whenever the pooler resets a reused
+// connection, and assertSchemaResolution() verifies it at boot.
 
 pool.on("error", (error) => {
   console.error("Unexpected PostgreSQL pool error:", error);
@@ -89,6 +98,21 @@ export async function runMigrations(): Promise<string[]> {
   try {
     await client.query(`CREATE SCHEMA IF NOT EXISTS "${SCHEMA}"`);
     await client.query(`SET search_path TO "${SCHEMA}"`);
+
+    // Make the schema the default for this role. A session-level `SET` alone is
+    // not enough behind a transaction pooler, which reuses server connections
+    // between transactions and resets them — discarding the setting. A role
+    // default survives that, because a reset restores it rather than clearing
+    // it. Not fatal if the role may not alter itself; assertSchemaResolution()
+    // then fails at boot with a clearer message than a wrong-table read.
+    try {
+      await client.query(`ALTER ROLE CURRENT_USER SET search_path TO "${SCHEMA}"`);
+    } catch (error) {
+      console.warn(
+        `Could not set the default search_path for the current role: ${(error as Error).message}`,
+      );
+      console.warn(`Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`);
+    }
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         name       TEXT PRIMARY KEY,
@@ -131,6 +155,23 @@ export async function runMigrations(): Promise<string[]> {
     client.release();
   }
   return applied;
+}
+
+/**
+ * Confirms that a pooled connection really does resolve unqualified names to
+ * SCHEMA. Called once at startup: if a connection proxy ever ignores or drops
+ * the search_path startup option, refusing to boot is far better than serving
+ * whichever same-named tables happen to sit in `public`.
+ */
+export async function assertSchemaResolution(): Promise<void> {
+  const { rows } = await pool.query<{ schema: string | null }>("SELECT current_schema() AS schema");
+  const actual = rows[0]?.schema ?? null;
+  if (actual !== SCHEMA) {
+    throw new Error(
+      `Unqualified table names resolve to ${JSON.stringify(actual)}, expected ${JSON.stringify(SCHEMA)}. ` +
+        "The connection is not preserving the search_path startup option.",
+    );
+  }
 }
 
 export async function closeDb(): Promise<void> {
