@@ -7,7 +7,8 @@ interface Props {
   product: Product;
 }
 
-const FAVORITES_KEY = "mqicma-favorite-products";
+export const FAVORITES_KEY = "mqicma-favorite-products";
+export const FAVORITES_CHANGED_EVENT = "mqicma-favorites-changed";
 
 function getFavorites(): string[] {
   try {
@@ -44,15 +45,21 @@ export default function ProductCard({ product }: Props) {
       updatedFavorites = favorites.filter(
         (id) => id !== productId
       );
+
       setIsFavorite(false);
     } else {
       updatedFavorites = [...favorites, productId];
+
       setIsFavorite(true);
     }
 
     localStorage.setItem(
       FAVORITES_KEY,
       JSON.stringify(updatedFavorites)
+    );
+
+    window.dispatchEvent(
+      new Event(FAVORITES_CHANGED_EVENT)
     );
   };
 
@@ -97,7 +104,7 @@ export default function ProductCard({ product }: Props) {
           </span>
         </div>
 
-        {/* Favorite */}
+        {/* Favorite button */}
         <button
           type="button"
           onClick={toggleFavorite}

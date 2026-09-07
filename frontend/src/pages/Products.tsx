@@ -3,7 +3,10 @@ import { listProducts } from "../api/products";
 import { listCategories } from "../api/categories";
 import { ApiError } from "../api/client";
 import type { Product, Category } from "../api/types";
-import ProductCard from "../components/ui/ProductCard";
+import ProductCard, {
+  FAVORITES_KEY,
+  FAVORITES_CHANGED_EVENT,
+} from "../components/ui/ProductCard";
 import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
 type SortOption =
@@ -15,10 +18,31 @@ type SortOption =
 
 const allCategoryLabel = "Hamısı";
 
+function getFavorites(): string[] {
+  try {
+    const stored = localStorage.getItem(FAVORITES_KEY);
+
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function Products() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(allCategoryLabel);
   const [sort, setSort] = useState<SortOption>("default");
+
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(
+    getFavorites
+  );
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -52,6 +76,25 @@ export default function Products() {
     load();
   }, []);
 
+  // Favorite dəyişikliklərini məhsullar səhifəsində dərhal göstər
+  useEffect(() => {
+    const updateFavorites = () => {
+      setFavoriteIds(getFavorites());
+    };
+
+    window.addEventListener(
+      FAVORITES_CHANGED_EVENT,
+      updateFavorites
+    );
+
+    return () => {
+      window.removeEventListener(
+        FAVORITES_CHANGED_EVENT,
+        updateFavorites
+      );
+    };
+  }, []);
+
   const allCategories = useMemo(
     () => [allCategoryLabel, ...categories.map((item) => item.name)],
     [categories]
@@ -72,9 +115,14 @@ export default function Products() {
           .toLocaleLowerCase("az")
           .includes(searchValue);
 
+      const matchFavorite =
+        !showFavorites ||
+        favoriteIds.includes(String(product.id));
+
       return (
         matchCategory &&
         matchSearch &&
+        matchFavorite &&
         product.status === "active"
       );
     });
@@ -97,17 +145,26 @@ export default function Products() {
           return 0;
       }
     });
-  }, [products, search, category, sort]);
+  }, [
+    products,
+    search,
+    category,
+    sort,
+    showFavorites,
+    favoriteIds,
+  ]);
 
   const hasActiveFilters =
     search.trim() !== "" ||
     category !== allCategoryLabel ||
-    sort !== "default";
+    sort !== "default" ||
+    showFavorites;
 
   const resetFilters = () => {
     setSearch("");
     setCategory(allCategoryLabel);
     setSort("default");
+    setShowFavorites(false);
   };
 
   const clearSearch = () => {
@@ -120,7 +177,7 @@ export default function Products() {
       <section className="py-16 bg-gradient-to-br from-[#d98643] via-[#9e4996] to-[#8636a1]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/15 text-white/90 text-xs font-semibold mb-5 uppercase tracking-wider">
-            Katalog
+            Kataloq
           </div>
 
           <h1 className="font-['DM_Serif_Display'] text-5xl text-white mb-4">
@@ -213,8 +270,8 @@ export default function Products() {
                 </div>
               </div>
 
-              {/* Categories */}
-              <div className="flex flex-wrap gap-3 mb-10">
+              {/* Category + Favorites filters */}
+              <div className="flex flex-wrap items-center gap-3 mb-10">
                 {allCategories.map((cat) => (
                   <button
                     key={cat}
@@ -229,22 +286,72 @@ export default function Products() {
                     {cat}
                   </button>
                 ))}
+
+                {/* Favorites */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowFavorites((current) => !current)
+                  }
+                  className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                    showFavorites
+                      ? "bg-gradient-to-r from-[#E84B9B] to-[#C94CB0] !text-white shadow-md"
+                      : "bg-white !text-[#E84B9B] border border-[#F2D4E5] hover:bg-[#FFF3F8] hover:border-[#E84B9B]"
+                  }`}
+                >
+                  <span className="mr-1">♥</span>
+                  Favoritlərim ({favoriteIds.length})
+                </button>
               </div>
 
-              {/* Reset filters */}
+              {/* Active filters */}
               {hasActiveFilters && (
-                <div className="flex justify-end mb-8">
+                <div className="flex items-center justify-between gap-4 mb-8 px-4 py-3 rounded-xl bg-white border border-[#E4E9F4]">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-semibold !text-[#1A2540]">
+                      Aktiv filtrlər:
+                    </span>
+
+                    {search.trim() && (
+                      <span className="px-2.5 py-1 rounded-lg bg-[#EEF3FD] !text-[#3B6FE0]">
+                        Axtarış: {search}
+                      </span>
+                    )}
+
+                    {category !== allCategoryLabel && (
+                      <span className="px-2.5 py-1 rounded-lg bg-[#EEF3FD] !text-[#3B6FE0]">
+                        Kateqoriya: {category}
+                      </span>
+                    )}
+
+                    {showFavorites && (
+                      <span className="px-2.5 py-1 rounded-lg bg-[#FFF0F7] !text-[#E84B9B]">
+                        Yalnız favoritlər
+                      </span>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     onClick={resetFilters}
-                    className="px-5 py-2.5 rounded-xl bg-[#EEF3FD] !text-[#3B6FE0] text-sm font-semibold border border-[#D8E2FA] hover:bg-gradient-to-r hover:from-[#3B6FE0] hover:to-[#7C5CFC] hover:!text-white hover:border-transparent transition-all duration-200"
+                    className="shrink-0 px-4 py-2 rounded-lg bg-[#EEF3FD] !text-[#3B6FE0] text-sm font-semibold border border-[#D8E2FA] hover:bg-gradient-to-r hover:from-[#3B6FE0] hover:to-[#7C5CFC] hover:!text-white hover:border-transparent transition-all duration-200"
                   >
                     Filtrləri sıfırla
                   </button>
                 </div>
               )}
 
-              {/* Results */}
+              {/* Result count */}
+              <div className="flex items-center justify-between mb-7">
+                <p className="text-[#6B7A99] text-sm">
+                  <span className="font-semibold text-[#1A2540]">
+                    {filtered.length}
+                  </span>{" "}
+                  məhsul tapıldı
+                </p>
+              </div>
+
+              {/* Empty state */}
               {filtered.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="w-16 h-16 rounded-full bg-[#EEF3FD] flex items-center justify-center mx-auto mb-4">
@@ -263,12 +370,16 @@ export default function Products() {
                     </svg>
                   </div>
 
-                  <h3 className="font-['DM_Serif_Display'] text-xl text-[#1A2540] mb-2">
-                    Heç bir məhsul tapılmadı
+                  <h3 className="font-['DM_Serif_Display'] text-xl !text-[#1A2540] mb-2">
+                    {showFavorites
+                      ? "Hələ favorit məhsul yoxdur"
+                      : "Heç bir məhsul tapılmadı"}
                   </h3>
 
-                  <p className="text-[#6B7A99] mb-5">
-                    Axtarış parametrlərini dəyişib yenidən cəhd edin.
+                  <p className="!text-[#6B7A99] mb-5">
+                    {showFavorites
+                      ? "Bəyəndiyiniz məhsulları ürək düyməsinə basaraq favoritlərinizə əlavə edin."
+                      : "Axtarış parametrlərini dəyişib yenidən cəhd edin."}
                   </p>
 
                   {hasActiveFilters && (
@@ -282,27 +393,15 @@ export default function Products() {
                   )}
                 </div>
               ) : (
-                <>
-                  {/* Result count */}
-                  <div className="flex items-center justify-between mb-7">
-                    <p className="text-[#6B7A99] text-sm">
-                      <span className="font-semibold text-[#1A2540]">
-                        {filtered.length}
-                      </span>{" "}
-                      məhsul tapıldı
-                    </p>
-                  </div>
-
-                  {/* Product grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7">
-                    {filtered.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                      />
-                    ))}
-                  </div>
-                </>
+                /* Product grid */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-7">
+                  {filtered.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                    />
+                  ))}
+                </div>
               )}
             </>
           )}
