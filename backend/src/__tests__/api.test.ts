@@ -193,6 +193,87 @@ test("product create/read/update/delete round-trips", async () => {
   assert.equal(gone.status, 404);
 });
 
+test("a product keeps an ordered gallery and a cover that follows it", async () => {
+  const first = "https://example.com/one.jpg";
+  const second = "https://example.com/two.jpg";
+  const third = "https://example.com/three.jpg";
+
+  const created = await api("/products", {
+    method: "POST",
+    token,
+    body: {
+      name: "Qalereyalı məhsul",
+      price: 10,
+      category: "Test kateqoriya",
+      shortDesc: "Qısa təsvir",
+      images: [first, second, third],
+    },
+  });
+  assert.equal(created.status, 201);
+  const product = created.body as { id: string; image: string; images: string[] };
+  assert.deepEqual(product.images, [first, second, third]);
+  // The cover is not a separate thing to keep in sync — it is the first entry.
+  assert.equal(product.image, first);
+
+  // Reordering the gallery moves the cover with it.
+  const reordered = await api(`/products/${product.id}`, {
+    method: "PUT",
+    token,
+    body: { images: [third, first] },
+  });
+  assert.equal(reordered.status, 200);
+  assert.deepEqual((reordered.body as { images: string[] }).images, [third, first]);
+  assert.equal((reordered.body as { image: string }).image, third);
+
+  // An update that says nothing about images must leave the gallery alone.
+  const renamed = await api(`/products/${product.id}`, {
+    method: "PUT",
+    token,
+    body: { name: "Adı dəyişdi" },
+  });
+  assert.equal(renamed.status, 200);
+  assert.deepEqual((renamed.body as { images: string[] }).images, [third, first]);
+
+  await api(`/products/${product.id}`, { method: "DELETE", token });
+});
+
+test("a single-image product still reads back as a one-entry gallery", async () => {
+  const only = "https://example.com/solo.jpg";
+  const created = await api("/products", {
+    method: "POST",
+    token,
+    body: {
+      name: "Tək şəkilli məhsul",
+      price: 5,
+      category: "Test kateqoriya",
+      shortDesc: "Qısa təsvir",
+      image: only,
+    },
+  });
+  assert.equal(created.status, 201);
+  const product = created.body as { id: string; image: string; images: string[] };
+  assert.equal(product.image, only);
+  assert.deepEqual(product.images, [only]);
+
+  await api(`/products/${product.id}`, { method: "DELETE", token });
+});
+
+test("a gallery beyond the cap is rejected with 400", async () => {
+  const tooMany = Array.from({ length: 11 }, (_, i) => `https://example.com/${i}.jpg`);
+  const res = await api("/products", {
+    method: "POST",
+    token,
+    body: {
+      name: "Həddindən çox şəkil",
+      price: 5,
+      category: "Test kateqoriya",
+      shortDesc: "Qısa təsvir",
+      images: tooMany,
+    },
+  });
+  assert.equal(res.status, 400);
+});
+
 test("invalid input is rejected with 400 and creates nothing", async () => {
   const before = await api("/products?all=true", { token });
   const beforeCount = (before.body as unknown[]).length;

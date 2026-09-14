@@ -43,11 +43,20 @@ const fileFilter: multer.Options["fileFilter"] = (_req, file, callback) => {
   callback(null, true);
 };
 
+/** How many pictures one product's gallery may hold. */
+export const MAX_PRODUCT_IMAGES = 10;
+
+// Products take a gallery, so they accept a batch under `images` — while still
+// accepting the original single `image` field, which the admin panel sent
+// before galleries existed and which keeps older clients working.
 export const productImageUpload = multer({
   storage: createStorage(productDir),
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
-}).single("image");
+  limits: { fileSize: 5 * 1024 * 1024, files: MAX_PRODUCT_IMAGES + 1 },
+}).fields([
+  { name: "image", maxCount: 1 },
+  { name: "images", maxCount: MAX_PRODUCT_IMAGES },
+]);
 export const serviceImageUpload = multer({
   storage: createStorage(serviceDir),
   fileFilter,

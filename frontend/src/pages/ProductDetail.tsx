@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getProduct, listProducts } from "../api/products";
 import { ApiError } from "../api/client";
-import { resolveMediaUrl } from "../api/client";
 import type { Product } from "../api/types";
 import ProductCard from "../components/ui/ProductCard";
+import ProductGallery from "../components/ui/ProductGallery";
 import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
 export default function ProductDetail() {
@@ -48,13 +48,9 @@ export default function ProductDetail() {
         {/* Main content */}
         <div className="bg-white rounded-3xl shadow-sm border border-[#E4E9F4] overflow-hidden">
           <div className="grid lg:grid-cols-2 gap-0">
-            {/* Image */}
-            <div className="aspect-square lg:aspect-auto bg-[#F0F4FE] relative">
-              <img
-                src={resolveMediaUrl(product.image)}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
+            {/* Gallery */}
+            <div className="bg-[#F0F4FE]">
+              <ProductGallery images={product.images} alt={product.name} />
             </div>
 
             {/* Info */}

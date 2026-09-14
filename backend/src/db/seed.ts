@@ -33,6 +33,23 @@ const PRODUCT_IMAGES: Record<string, string> = {
   "Əl işi bilərzik": "https://images.unsplash.com/photo-1544031089-296448e3ebfa?w=600&h=500&fit=crop&auto=format",
 };
 
+/**
+ * Seed products ship with a gallery so the picture carousel has something to
+ * carousel. These are three crops of the same placeholder photograph, standing
+ * in for the several angles a real product would be shot from; genuine
+ * photographs arrive through the admin panel.
+ */
+function galleryFor(name: string): string[] {
+  const cover = PRODUCT_IMAGES[name];
+  if (!cover) return [];
+  const [base] = cover.split("?");
+  return [
+    cover,
+    `${base}?w=600&h=500&fit=crop&crop=top&auto=format`,
+    `${base}?w=600&h=500&fit=crop&crop=bottom&auto=format`,
+  ];
+}
+
 const SERVICE_IMAGES: Record<string, string> = {
   "Dərzilik xidməti": "https://images.unsplash.com/photo-1457972657980-4c9fddebec8d?w=600&h=450&fit=crop&auto=format",
   "Toxuculuq": "https://images.unsplash.com/photo-1763733593326-758b2271d725?w=600&h=450&fit=crop&auto=format",
@@ -89,6 +106,7 @@ async function main() {
         name, price, category, shortDesc,
         fullDesc: shortDesc,
         image: PRODUCT_IMAGES[name] ?? "",
+        images: galleryFor(name),
         status: "active",
       });
     }
