@@ -3,7 +3,7 @@ import { createProduct, deleteProduct, listProducts, updateProduct, type Product
 import { listCategories } from "../../api/categories";
 import type { Category, Product } from "../../api/types";
 import { ApiError, resolveMediaUrl } from "../../api/client";
-import ImageFileField from "../../components/ui/ImageFileField";
+import ProductImagesField from "../../components/ui/ProductImagesField";
 
 type FormState = ProductInput;
 
@@ -13,7 +13,8 @@ const emptyForm: FormState = {
   category: "",
   shortDesc: "",
   fullDesc: "",
-  image: "",
+  images: [],
+  imageFiles: [],
   status: "active",
 };
 
@@ -51,7 +52,7 @@ export default function AdminProducts() {
     setShowForm(true);
   };
   const openEdit = (p: Product) => {
-    setForm({ name: p.name, price: p.price, category: p.category, shortDesc: p.shortDesc, fullDesc: p.fullDesc, image: p.image, status: p.status });
+    setForm({ name: p.name, price: p.price, category: p.category, shortDesc: p.shortDesc, fullDesc: p.fullDesc, images: p.images, imageFiles: [], status: p.status });
     setFormError(null);
     setEditId(p.id);
     setShowForm(true);
@@ -166,7 +167,12 @@ export default function AdminProducts() {
                   className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 resize-none"
                 />
               </div>
-              <ImageFileField value={form.image} file={form.imageFile} onChange={(imageFile) => setForm({ ...form, imageFile })} />
+              <ProductImagesField
+                images={form.images}
+                files={form.imageFiles ?? []}
+                onImagesChange={(images) => setForm({ ...form, images })}
+                onFilesChange={(imageFiles) => setForm({ ...form, imageFiles })}
+              />
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Status</label>
                 <select

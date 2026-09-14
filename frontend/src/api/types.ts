@@ -1,4 +1,5 @@
-export interface Product { id: string; name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
+/** `image` is the cover and always equals `images[0]`; `images` is the ordered gallery. */
+export interface Product { id: string; name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; images: string[]; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
 export interface Service { id: string; name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
 export interface Event { id: string; title: string; date: string; location: string; shortDesc: string; fullDesc: string; image: string; status: "upcoming" | "past"; createdAt: string; updatedAt: string; }
 export interface Category { id: string; name: string; type: "product" | "service"; }

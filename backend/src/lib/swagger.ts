@@ -1,5 +1,6 @@
 import path from "node:path";
 import swaggerJsdoc from "swagger-jsdoc";
+import { MAX_PRODUCT_IMAGES } from "../middleware/upload";
 
 export const swaggerSpec = swaggerJsdoc({
   definition: {
@@ -546,7 +547,15 @@ export const swaggerSpec = swaggerJsdoc({
             category: { type: "string" },
             shortDesc: { type: "string" },
             fullDesc: { type: "string" },
-            image: { type: "string" },
+            image: {
+              type: "string",
+              description: "Örtük şəkli — həmişə qalereyanın ilk şəkli ilə eynidir.",
+            },
+            images: {
+              type: "array",
+              items: { type: "string" },
+              description: "Sıralanmış şəkil qalereyası; ilk element örtük şəklidir.",
+            },
             status: { type: "string", enum: ["active", "inactive"] },
             createdAt: { type: "string" },
             updatedAt: { type: "string" },
@@ -564,7 +573,15 @@ export const swaggerSpec = swaggerJsdoc({
             image: {
               type: "string",
               format: "binary",
-              description: "JPG, PNG, WEBP və ya GIF faylı",
+              description:
+                "Tək şəkil yükləmək üçün köhnə sahə. Yeni qalereya üçün `images` istifadə edin.",
+            },
+            images: {
+              type: "array",
+              items: { type: "string", format: "binary" },
+              description:
+                `Qalereya: saxlanılacaq mövcud şəkillərin JSON siyahısı, ` +
+                `yeni yüklənən fayllar isə sonuna əlavə olunur. Ən çox ${MAX_PRODUCT_IMAGES} şəkil.`,
             },
             status: { type: "string", enum: ["active", "inactive"] },
           },

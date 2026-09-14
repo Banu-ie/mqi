@@ -69,9 +69,12 @@ export const Categories = {
   },
 };
 
-export interface ProductRow { id: string; name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
-const PRODUCT_SELECT = `SELECT id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt" FROM products`;
-const PRODUCT_COLUMNS = { name: "name", price: "price", category: "category", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" };
+/** `images` is a JSON-encoded ordered gallery; the controller hands callers the parsed array. */
+export interface ProductRow { id: string; name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; images: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
+export interface ProductInput { name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; images: string[]; status: string; }
+const PRODUCT_FIELDS = `id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, images, status, created_at AS "createdAt", updated_at AS "updatedAt"`;
+const PRODUCT_SELECT = `SELECT ${PRODUCT_FIELDS} FROM products`;
+const PRODUCT_COLUMNS = { name: "name", price: "price", category: "category", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", images: "images", status: "status" };
 export const Products = {
   list(includeInactive = false) {
     return includeInactive
@@ -79,21 +82,21 @@ export const Products = {
       : query<ProductRow>(`${PRODUCT_SELECT} WHERE status = 'active' ORDER BY created_at DESC`);
   },
   get(id: string) { return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1`, [id]); },
-  async create(input: Omit<ProductRow, "id" | "createdAt" | "updatedAt">): Promise<ProductRow> {
+  async create(input: ProductInput): Promise<ProductRow> {
     const rows = await query<ProductRow>(
-      `INSERT INTO products (name, price, category, short_desc, full_desc, image, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
-      [input.name, input.price, input.category, input.shortDesc, input.fullDesc, input.image, input.status],
+      `INSERT INTO products (name, price, category, short_desc, full_desc, image, images, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${PRODUCT_FIELDS}`,
+      [input.name, input.price, input.category, input.shortDesc, input.fullDesc, input.image, JSON.stringify(input.images), input.status],
     );
     return rows[0];
   },
-  async update(id: string, input: Partial<Omit<ProductRow, "id" | "createdAt" | "updatedAt">>): Promise<ProductRow | null> {
-    const update = buildUpdate(input as Record<string, unknown>, PRODUCT_COLUMNS);
+  async update(id: string, input: Partial<ProductInput>): Promise<ProductRow | null> {
+    const normalized: Record<string, unknown> = { ...input };
+    if (input.images !== undefined) normalized.images = JSON.stringify(input.images);
+    const update = buildUpdate(normalized, PRODUCT_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<ProductRow>(
-      `UPDATE products SET ${update.clause} WHERE id = $${update.values.length + 1}
-       RETURNING id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt"`,
+      `UPDATE products SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING ${PRODUCT_FIELDS}`,
       [...update.values, id],
     );
     return rows[0] ?? null;
