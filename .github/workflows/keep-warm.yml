@@ -4,20 +4,39 @@
 # them, so a visitor arriving after a quiet spell sees an error instead of the
 # site. Pinging the health endpoint keeps the instance up.
 #
-# The free plan allows 750 instance-hours a month and a month of always-on is
-# about 744, so this fits — but only while this is the only free service in the
-# workspace. Delete this workflow if that changes, or if the service is upgraded
-# to a paid instance (which does not sleep and does not need pinging).
+# IMPORTANT — this workflow cannot keep the service up on its own.
+#
+# The `*/10` schedule below is a request, not a guarantee: GitHub queues
+# scheduled workflows and drops or delays them under load, and low-activity
+# repositories are delayed the hardest. Measured on this repository, runs
+# actually arrive every 99–313 minutes, not every 10 — so a single ping per run
+# left the service asleep for most of the day, and the first visitor in each
+# gap got Render's 404 instead of the site.
+#
+# So each run now holds the service up for most of an hour by pinging on a loop
+# instead of once. That shrinks the dead window, but it does not close it: with
+# runs arriving hours apart there are still stretches where the service is
+# down. The only reliable fixes are outside GitHub Actions:
+#
+#   1. An external uptime pinger (cron-job.org, UptimeRobot — both free) hitting
+#      /api/health every 5–10 minutes. These fire on time; GitHub's cron does not.
+#   2. Render's paid Starter instance, which never sleeps and needs no pinging.
+#
+# Instance-hour budget: the free plan allows 750 instance-hours a month and a
+# month is about 744, so even always-on fits — but with no headroom, and only
+# while this is the only free service in the workspace. Delete this workflow if
+# that changes, or once the service moves to a paid instance.
 name: Keep the Render service warm
 
 on:
   schedule:
-    # Every 10 minutes. GitHub queues scheduled runs and can delay them under
-    # load, which is fine: anything under the ~15 minute idle window works.
+    # Every 10 minutes as far as GitHub is concerned. See the note above for
+    # what actually happens: treat this as "whenever GitHub gets around to it".
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
-# Never let two pings overlap if a run is delayed.
+# One warmer at a time. A newly started run cancels the one still looping, which
+# is what we want: the fresh run restarts the full hour-long window.
 concurrency:
   group: keep-warm
   cancel-in-progress: true
@@ -25,21 +44,50 @@ concurrency:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Long enough for the loop below plus the slack a cold start needs.
+    timeout-minutes: 65
     steps:
-      - name: Ping the health endpoint
+      - name: Hold the health endpoint awake
         run: |
           URL="https://mqicma.onrender.com/api/health"
-          for attempt in 1 2 3 4 5; do
+
+          # Render sleeps after ~15 minutes idle, so ping well inside that.
+          INTERVAL=300      # 5 minutes between pings
+          ROUNDS=11         # 11 pings ≈ 55 minutes of coverage per run
+
+          ping_once() {
             # A sleeping instance needs a while to come back, hence the long
             # timeout and the retries.
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
-            echo "attempt ${attempt}: HTTP ${code}"
-            if [ "$code" = "200" ]; then
-              echo "service is awake"
-              exit 0
+            for attempt in 1 2 3 4 5; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || echo 000)
+              if [ "$code" = "200" ]; then
+                echo "  HTTP 200 (attempt ${attempt})"
+                return 0
+              fi
+              echo "  HTTP ${code} (attempt ${attempt}) — waking, retrying"
+              sleep 20
+            done
+            return 1
+          }
+
+          failures=0
+          for round in $(seq 1 "$ROUNDS"); do
+            echo "ping ${round}/${ROUNDS} at $(date -u +%H:%M:%SZ)"
+            if ! ping_once; then
+              failures=$((failures + 1))
+              echo "  ping ${round} failed"
             fi
-            sleep 20
+            # Explicit if, not `[ ... ] && sleep`: steps run under `bash -e`, and
+            # a bare failing test as the loop's last statement is a trap.
+            if [ "$round" -lt "$ROUNDS" ]; then
+              sleep "$INTERVAL"
+            fi
           done
-          echo "service did not return 200 after 5 attempts"
-          exit 1
+
+          echo "done: ${failures}/${ROUNDS} pings failed"
+          # Only fail the run if the service never answered at all — a single
+          # blip mid-loop is not worth a red X and a notification email.
+          if [ "$failures" -ge "$ROUNDS" ]; then
+            echo "service never returned 200 across the whole run"
+            exit 1
+          fi
