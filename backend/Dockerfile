@@ -30,8 +30,8 @@ ENV NODE_ENV=production
 ENV PORT=4000
 ENV TRUST_PROXY=true
 
-# Durable state lives in managed PostgreSQL. The one exception is backend/uploads:
-# mount a volume there if admin-uploaded images must survive a redeploy.
+# All durable state lives in managed PostgreSQL, admin-uploaded images included,
+# so this container needs no volume and can be replaced freely.
 # DATABASE_URL and JWT_SECRET are injected at runtime, never baked into the image.
 COPY --from=build /app/backend/node_modules ./node_modules
 COPY --from=build /app/backend/dist ./dist

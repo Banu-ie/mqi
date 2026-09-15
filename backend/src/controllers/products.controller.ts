@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { Products, type ProductRow } from "../db/models";
 import { MAX_PRODUCT_IMAGES } from "../middleware/upload";
+import { storeUpload } from "../lib/imageStore";
 
 const imageRef = z.string().refine(
   (value) => value === "" || value.startsWith("/uploads/") || /^https?:\/\//i.test(value),
@@ -51,8 +52,6 @@ function filesFor(req: Request, field: string): Express.Multer.File[] {
   return files[field] ?? [];
 }
 
-const toUploadPath = (file: Express.Multer.File) => `/uploads/products/${file.filename}`;
-
 /**
  * Works out the gallery a request is asking for, or undefined when the request
  * says nothing about images at all — which is how a partial update leaves an
@@ -63,18 +62,24 @@ const toUploadPath = (file: Express.Multer.File) => `/uploads/products/${file.fi
  * appended after them. The cover is simply the first entry, so `image` never
  * drifts from the gallery it belongs to.
  */
-function resolveGallery(req: Request): { images: string[]; image: string } | undefined {
-  const uploadedCover = filesFor(req, "image").map(toUploadPath);
-  const uploadedGallery = filesFor(req, "images").map(toUploadPath);
+async function resolveGallery(req: Request): Promise<{ images: string[]; image: string } | undefined> {
+  const coverFiles = filesFor(req, "image");
+  const galleryFiles = filesFor(req, "images");
   const listed = parseImageList(req.body?.images);
   const bodyCover = typeof req.body?.image === "string" ? req.body.image.trim() : undefined;
 
   const saysNothing =
     listed === undefined &&
     bodyCover === undefined &&
-    uploadedCover.length === 0 &&
-    uploadedGallery.length === 0;
+    coverFiles.length === 0 &&
+    galleryFiles.length === 0;
   if (saysNothing) return undefined;
+
+  // Writing the bytes to the database is what makes them outlive this
+  // container, so it happens here rather than being left to the caller.
+  const store = (file: Express.Multer.File) => storeUpload("products", file);
+  const uploadedCover = await Promise.all(coverFiles.map(store));
+  const uploadedGallery = await Promise.all(galleryFiles.map(store));
 
   const kept = Array.isArray(listed) ? listed.filter((v): v is string => typeof v === "string") : [];
 
@@ -117,13 +122,13 @@ export async function getProductById(req: Request, res: Response) {
   return res.json(product);
 }
 export async function createProduct(req: Request, res: Response) {
-  const gallery = resolveGallery(req) ?? { images: [], image: "" };
+  const gallery = (await resolveGallery(req)) ?? { images: [], image: "" };
   const parsed = productSchema.safeParse({ ...req.body, ...gallery });
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   return res.status(201).json(serialize(await Products.create(parsed.data)));
 }
 export async function updateProduct(req: Request, res: Response) {
-  const gallery = resolveGallery(req);
+  const gallery = await resolveGallery(req);
   const patch: Record<string, unknown> = { ...req.body };
   delete patch.image;
   delete patch.images;

@@ -254,3 +254,27 @@ export const ContactMessages = {
     return rows[0];
   },
 };
+
+/**
+ * Image bytes uploaded through the admin panel.
+ *
+ * They live in the database because the deployed instance's filesystem does not
+ * survive a restart — see migration 003. An upload is therefore durable the
+ * moment the request that carried it commits, with nothing to deploy afterwards.
+ */
+export type UploadKind = "products" | "services" | "events";
+export const Uploads = {
+  async create(input: { kind: UploadKind; mime: string; bytes: Buffer }): Promise<string> {
+    const rows = await query<{ id: string }>(
+      `INSERT INTO uploads (kind, mime, byte_size, bytes) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [input.kind, input.mime, input.bytes.byteLength, input.bytes],
+    );
+    return rows[0].id;
+  },
+  get(id: string) {
+    return queryOne<{ mime: string; bytes: Buffer }>(
+      `SELECT mime, bytes FROM uploads WHERE id = $1`,
+      [id],
+    );
+  },
+};

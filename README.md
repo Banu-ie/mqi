@@ -16,7 +16,7 @@ The site content is in Azerbaijani.
 | Database | PostgreSQL via `pg` (managed: Neon) |
 | Auth | JWT (12 h expiry) + bcrypt password hashing |
 | Validation | zod |
-| Uploads | multer (images to `backend/uploads/`) |
+| Uploads | multer + sharp (images resized and stored in Postgres) |
 | API docs | Swagger UI / OpenAPI 3 (`swagger-jsdoc`) |
 | Hardening | helmet, express-rate-limit, CORS allowlist, 100 kB body cap |
 | Tests | `node:test` via `tsx`, against a throwaway PostgreSQL schema |
@@ -42,7 +42,7 @@ The site content is in Azerbaijani.
 │   ├── src/lib/          # auth (JWT), OpenAPI spec
 │   ├── src/middleware/   # requireAuth, hasValidAdminToken, image upload
 │   ├── src/__tests__/    # end-to-end API tests
-│   ├── uploads/          # uploaded images (not in git)
+│   ├── uploads/          # legacy local images; uploads now go to the database
 │   └── Dockerfile
 ├── render.yaml           # Render blueprint: one web service
 └── scripts/serve-local.sh
@@ -168,8 +168,10 @@ events and categories, plus `PUT /api/content`, `GET /api/contact`,
 (which returns unpublished rows).
 
 Product, service and event writes accept either JSON or `multipart/form-data`
-with an `image` file (JPG, PNG, WEBP or GIF, max 5 MB). Uploads are stored under
-`backend/uploads/` and served from `/uploads/...`.
+with an `image` file (JPG, PNG, WEBP or GIF, max 5 MB). Uploads are resized to
+fit 1600 px, re-encoded to WebP and stored in the database, then served from
+`/uploads/...`. Nothing is written to the filesystem, so an upload survives a
+restart without anything being deployed.
 
 Rate limits: 300 requests / 15 min across `/api`, 10 failed logins / 15 min on
 `/api/auth/login`, 5 submissions / hour on `POST /api/contact`.
@@ -228,8 +230,8 @@ configure and no backend hostname anywhere** — not in the JS bundle, not in
 `render.yaml`. Whatever URL the host assigns, the site works, and adding a
 custom domain needs no rebuild.
 
-Because all durable state is in managed Postgres, the service is stateless and a
-redeploy cannot lose data. The one exception is `backend/uploads/` — see below.
+Because all durable state is in managed Postgres — uploaded images included —
+the service is stateless and a redeploy cannot lose data.
 
 `render.yaml` is a ready-to-apply Render blueprint for this shape.
 `backend/Dockerfile` builds the same thing as a container (from the repo root:
@@ -247,12 +249,15 @@ Deployment checklist:
    environment: `seed` runs through `tsx`, a dev dependency that is absent when
    `NODE_ENV=production`, while `seed:prod` runs the compiled `dist/db/seed.js`.
 
-> **Uploaded images need a disk.** Images posted through the admin panel are
-> written to `backend/uploads/`, not to Postgres. On a host with an ephemeral
-> filesystem (Render's free tier, and containers without a volume) every deploy
-> wipes them while the database rows keep pointing at `/uploads/...`, leaving
-> broken images. `render.yaml` carries a commented-out `disk:` block to enable
-> once that matters; a Render disk requires a paid instance type.
+> **Uploaded images need no disk.** Images posted through the admin panel go
+> into Postgres (table `uploads`), not onto the filesystem, so no volume is
+> required and an upload is durable the moment its request commits. This was not
+> always true: they were written to `backend/uploads/` until admin uploads
+> started vanishing within hours on Render's free tier, where every deploy,
+> restart and wake-from-idle replaces the container and resets its filesystem
+> while the rows kept pointing at `/uploads/...`. Keeping the bytes in the one
+> store that actually persists also means nobody has to redeploy — or have
+> access to this repository — for the site's own images to keep working.
 
 ### Custom domain
 

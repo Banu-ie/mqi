@@ -392,3 +392,112 @@ test("?all=true does not leak unpublished drafts to anonymous callers", async ()
   assert.equal((await api("/services?all=true")).status, 401);
   assert.equal((await api("/services?all=true", { token })).status, 200);
 });
+
+// The regression these guard against: uploads used to be written to
+// backend/uploads on the instance's own filesystem, which is wiped every time
+// the container is replaced. The product rows survived and kept pointing at
+// files that no longer existed, so admin-uploaded pictures became broken links
+// within hours. Images now live in the database, so an upload outlives the
+// process that received it with nothing to redeploy.
+test("an uploaded picture is stored in the database, not on the filesystem", async () => {
+  const sharp = (await import("sharp")).default;
+  const fs = await import("node:fs");
+  const pathModule = await import("node:path");
+
+  // Deliberately larger than the 1600 px cap, so the resize has to do something.
+  const original = await sharp({
+    create: { width: 2400, height: 1200, channels: 3, background: { r: 200, g: 40, b: 90 } },
+  })
+    .jpeg()
+    .toBuffer();
+
+  const form = new FormData();
+  form.set("name", "Şəkilli məhsul");
+  form.set("price", "12");
+  form.set("category", "Test kateqoriya");
+  form.set("shortDesc", "Qısa təsvir");
+  form.set("images", new Blob([new Uint8Array(original)], { type: "image/jpeg" }), "photo.jpg");
+
+  const created = await fetch(`${baseUrl}/api/products`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  assert.equal(created.status, 201);
+  const product = (await created.json()) as { id: string; image: string; images: string[] };
+
+  // The URL keeps the shape every existing reader already understands.
+  assert.equal(product.images.length, 1);
+  const url = product.images[0];
+  assert.match(url, /^\/uploads\/products\/[0-9a-f-]{36}\.webp$/);
+  // The cover follows the gallery, as it does for remote URLs.
+  assert.equal(product.image, url);
+
+  // Nothing was written to disk — that is the whole point.
+  assert.equal(
+    fs.existsSync(pathModule.join(process.cwd(), "uploads", "products", pathModule.basename(url))),
+    false,
+    "the upload was written to the filesystem, where a restart would destroy it",
+  );
+
+  // And it is served back, from the database, at that URL.
+  const fetched = await fetch(`${baseUrl}${url}`);
+  assert.equal(fetched.status, 200);
+  assert.equal(fetched.headers.get("content-type"), "image/webp");
+  const served = Buffer.from(await fetched.arrayBuffer());
+  assert.ok(served.length > 0);
+
+  // Re-encoded and bounded, so a phone photo cannot bloat the database.
+  const meta = await sharp(served).metadata();
+  assert.equal(meta.format, "webp");
+  assert.equal(meta.width, 1600);
+  assert.ok(served.length < original.length, "the stored image should be smaller than the upload");
+});
+
+test("an upload survives the process that received it", async () => {
+  const sharp = (await import("sharp")).default;
+  const png = await sharp({
+    create: { width: 32, height: 32, channels: 3, background: { r: 10, g: 20, b: 30 } },
+  })
+    .png()
+    .toBuffer();
+
+  const form = new FormData();
+  form.set("name", "Davamlı şəkil");
+  form.set("price", "5");
+  form.set("category", "Test kateqoriya");
+  form.set("shortDesc", "Qısa təsvir");
+  form.set("images", new Blob([new Uint8Array(png)], { type: "image/png" }), "tiny.png");
+
+  const created = await fetch(`${baseUrl}/api/products`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  assert.equal(created.status, 201);
+  const url = ((await created.json()) as { images: string[] }).images[0];
+
+  // Restart the HTTP server on a fresh port: the old process state is gone, and
+  // on the old filesystem-backed code a wiped container took the file with it.
+  // The picture has to come back from the database regardless.
+  const { app } = await import("../index.js");
+  const restarted = await new Promise<Server>((resolve) => {
+    const next = app.listen(0, () => resolve(next));
+  });
+  const restartedUrl = `http://127.0.0.1:${(restarted.address() as AddressInfo).port}`;
+  try {
+    const fetched = await fetch(`${restartedUrl}${url}`);
+    assert.equal(fetched.status, 200);
+    assert.ok(Buffer.from(await fetched.arrayBuffer()).length > 0);
+  } finally {
+    await new Promise<void>((resolve) => restarted.close(() => resolve()));
+  }
+});
+
+test("an unknown upload path is a plain 404, not a crash", async () => {
+  const missing = await fetch(`${baseUrl}/uploads/products/8d1b7d2e-0000-4000-8000-000000000000.webp`);
+  assert.equal(missing.status, 404);
+
+  const nonsense = await fetch(`${baseUrl}/uploads/products/not-an-id.webp`);
+  assert.equal(nonsense.status, 404);
+});

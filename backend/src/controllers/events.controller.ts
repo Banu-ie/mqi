@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { Events } from "../db/models";
+import { storeUpload } from "../lib/imageStore";
 
 const isValidDate = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -41,9 +42,14 @@ const eventSchema = z.object({
   status: z.enum(["upcoming", "past"]).default("upcoming"),
 });
 
-function imageValue(req: Request, fallback = "") {
+/**
+ * The image this request is asking for, storing an uploaded file in the
+ * database on the way past (see middleware/upload). Call it once per request:
+ * it writes, so calling it twice would store the same picture twice.
+ */
+async function imageValue(req: Request, fallback = "") {
   return req.file
-    ? `/uploads/events/${req.file.filename}`
+    ? storeUpload("events", req.file)
     : typeof req.body.image === "string"
       ? req.body.image
       : fallback;
@@ -62,21 +68,20 @@ export async function getEventById(req: Request, res: Response) {
   return res.json(event);
 }
 export async function createEvent(req: Request, res: Response) {
-  const parsed = eventSchema.safeParse({ ...req.body, image: imageValue(req) });
+  const parsed = eventSchema.safeParse({ ...req.body, image: await imageValue(req) });
   if (!parsed.success)
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  return res
-    .status(201)
-    .json(await Events.create({ ...parsed.data, image: imageValue(req) }));
+  return res.status(201).json(await Events.create(parsed.data));
 }
 export async function updateEvent(req: Request, res: Response) {
+  const uploaded = req.file ? await imageValue(req) : undefined;
   const parsed = eventSchema
     .partial()
     .safeParse({
       ...req.body,
-      ...(req.file ? { image: imageValue(req) } : {}),
+      ...(uploaded !== undefined ? { image: uploaded } : {}),
     });
   if (!parsed.success)
     return res
