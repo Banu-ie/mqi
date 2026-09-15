@@ -16,6 +16,7 @@ import { eventsRouter } from "./routes/events";
 import { categoriesRouter } from "./routes/categories";
 import { contentRouter } from "./routes/content";
 import { contactRouter } from "./routes/contact";
+import { uploadsRouter } from "./routes/uploads";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -48,7 +49,13 @@ app.use(
 );
 app.use(cors({ origin: CORS_ORIGINS }));
 app.use(express.json({ limit: "100kb" }));
+// Uploaded images live in the database (see migration 003), because this
+// instance's filesystem does not survive a restart. The static mount stays in
+// front of them only for local checkouts that still hold files under
+// backend/uploads from before the move; on the deployed instance that directory
+// is empty, so every request falls straight through to the database.
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", uploadsRouter);
 
 const rateLimitMessage = (message: string) => ({
   windowMs: 15 * 60 * 1000,
