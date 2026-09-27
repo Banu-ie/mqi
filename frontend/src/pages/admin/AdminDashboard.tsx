@@ -4,6 +4,7 @@ import { listProducts } from "../../api/products";
 import { listServices } from "../../api/services";
 import { listEvents } from "../../api/events";
 import { listCategories } from "../../api/categories";
+import { resolveMediaUrl } from "../../api/client";
 import type { Product, Service, Event, Category } from "../../api/types";
 import { ErrorBanner, PageSpinner } from "../../components/ui/StatusStates";
 
@@ -14,6 +15,7 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [failedProductImages, setFailedProductImages] = useState<Record<string, boolean>>({});
   useEffect(() => { Promise.all([listProducts(true), listServices(true), listEvents(), listCategories()]).then(([p, s, e, c]) => { setProducts(p); setServices(s); setEvents(e); setCategories(c); }).catch((err) => setError(err instanceof Error ? err.message : "Dashboard yüklənmədi.")).finally(() => setLoading(false)); }, []);
   if (loading) return <PageSpinner label="Dashboard yüklənir..." />;
   if (error) return <ErrorBanner message={error} />;
@@ -128,7 +130,20 @@ export default function AdminDashboard() {
             {products.slice(0, 4).map((p) => (
               <div key={p.id} className="flex items-center gap-4 p-3 bg-gradient-to-r from-[#fee5d6] to-[#f4e0f8] rounded-lg transition-colors hover:from-[#f4e0f8] hover:to-[#fee5d6]">
                 <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
-                  <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                  {p.image && !failedProductImages[p.id] ? (
+                    <img
+                      src={resolveMediaUrl(p.image)}
+                      alt={p.name}
+                      onError={() => setFailedProductImages((current) => ({ ...current, [p.id]: true }))}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[#9AA8C0]" aria-label="Şəkil mövcud deyil">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-[#1A2540] truncate">{p.name}</div>
