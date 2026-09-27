@@ -247,13 +247,14 @@ export const ContactMessages = {
     return query<ContactMessageRow>(
       `SELECT id, name, phone, message, created_at AS "createdAt"
        FROM contact_messages
+      WHERE deleted_at IS NULL
        ORDER BY created_at DESC
        LIMIT $1 OFFSET $2`,
       [pageSize, (page - 1) * pageSize],
     );
   },
   async count(): Promise<number> {
-    const row = await queryOne<{ count: number }>("SELECT COUNT(*)::int AS count FROM contact_messages");
+    const row = await queryOne<{ count: number }>("SELECT COUNT(*)::int AS count FROM contact_messages WHERE deleted_at IS NULL");
     return row?.count ?? 0;
   },
   async create(input: { name: string; phone: string; message: string }): Promise<ContactMessageRow> {
@@ -265,7 +266,7 @@ export const ContactMessages = {
     return rows[0];
   },
   async remove(id: string): Promise<boolean> {
-    return (await execute("DELETE FROM contact_messages WHERE id = $1", [id])) > 0;
+    return (await execute("UPDATE contact_messages SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL", [id])) > 0;
   },
 };
 

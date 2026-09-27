@@ -356,6 +356,12 @@ test("contact messages are public to submit and private to read", async () => {
   const authorized = await api("/contact", { token });
   assert.equal(authorized.status, 200);
   assert.equal((authorized.body as { items: unknown[] }).items.length, 1);
+
+  const contactId = ((authorized.body as { items: { id: string }[] }).items[0]).id;
+  const deleted = await api(`/contact/${contactId}`, { method: "DELETE", token });
+  assert.equal(deleted.status, 204);
+  const afterDelete = await api("/contact", { token });
+  assert.equal((afterDelete.body as { total: number }).total, 0);
 });
 
 test("unknown api routes return a json 404", async () => {
