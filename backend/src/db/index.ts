@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Pool, types, type PoolClient } from "pg";
+import { logger } from "../lib/logger";
 
 // NUMERIC arrives as a string by default, which would turn `price` into a
 // string in every API response. Parse it as a float so the JSON shape matches
@@ -44,7 +45,7 @@ export const pool = new Pool({
 // connection, and assertSchemaResolution() verifies it at boot.
 
 pool.on("error", (error) => {
-  console.error("Unexpected PostgreSQL pool error:", error);
+  logger.error(error, "Unexpected PostgreSQL pool error");
 });
 
 export async function query<T extends object>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -108,10 +109,8 @@ export async function runMigrations(): Promise<string[]> {
     try {
       await client.query(`ALTER ROLE CURRENT_USER SET search_path TO "${SCHEMA}"`);
     } catch (error) {
-      console.warn(
-        `Could not set the default search_path for the current role: ${(error as Error).message}`,
-      );
-      console.warn(`Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`);
+      logger.warn("Could not set the default search_path for the current role", { code: (error as { code?: string }).code });
+      logger.warn(`Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`);
     }
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (

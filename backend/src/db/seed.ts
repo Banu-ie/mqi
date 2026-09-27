@@ -9,6 +9,7 @@ import {
   Services,
   SiteContent,
 } from "./models";
+import { logger } from "../lib/logger";
 
 // Seeding replaces the demo catalogue, so it only clears tables when
 // SEED_RESET=true is passed explicitly. Without that flag it tops up empty
@@ -308,7 +309,7 @@ async function main() {
 
 main()
   .catch((error) => {
-    console.error(error);
+    logger.error(error, "Seed command failed");
     process.exitCode = 1;
   })
   .finally(() => closeDb());

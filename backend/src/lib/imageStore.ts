@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { Uploads, type UploadKind } from "../db/models";
+import { logger } from "./logger";
 
 /**
  * Where uploaded pictures are kept.
@@ -54,7 +55,7 @@ async function encode(
       .toBuffer();
     return { mime: "image/webp", bytes };
   } catch (error) {
-    console.warn(`Could not re-encode an upload, storing it as sent: ${(error as Error).message}`);
+    logger.warn("Could not re-encode an upload, storing it as sent", { name: (error as Error).name });
     return { mime: file.mimetype, bytes: file.buffer };
   }
 }

@@ -17,8 +17,11 @@ import { categoriesRouter } from "./routes/categories";
 import { contentRouter } from "./routes/content";
 import { contactRouter } from "./routes/contact";
 import { uploadsRouter } from "./routes/uploads";
+import { logger } from "./lib/logger";
+import { requestId } from "./middleware/requestId";
 
 const app = express();
+app.use(requestId);
 const PORT = Number(process.env.PORT) || 4000;
 const defaultCorsOrigins =
   process.env.NODE_ENV === "production"
@@ -185,11 +188,12 @@ app.use(
     }
     // Anything else is genuinely unexpected: log it server-side, and never leak
     // the message or stack to the client.
-    console.error(err);
+    logger.error(err, "Unhandled request error", { requestId: _req.requestId });
     res
       .status(500)
       .json({
         error: "Serverdə xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.",
+        reference: _req.requestId,
       });
   },
 );
@@ -213,7 +217,7 @@ if (require.main === module) {
       });
     })
     .catch((error) => {
-      console.error("Failed to prepare the database:", error);
+      logger.error(error, "Failed to prepare the database");
       process.exit(1);
     });
 }
