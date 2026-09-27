@@ -32,7 +32,7 @@ async function api(
 ) {
   const headers: Record<string, string> = {};
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
-  if (init.token) headers.Authorization = `Bearer ${init.token}`;
+  if (init.token) headers.Cookie = `mqicma_admin=${init.token}`;
   const response = await fetch(`${baseUrl}/api${routePath}`, {
     method: init.method ?? "GET",
     headers,
@@ -47,7 +47,11 @@ async function api(
       body = text;
     }
   }
-  return { status: response.status, body };
+  return {
+    status: response.status,
+    body,
+    setCookie: response.headers.get("set-cookie"),
+  };
 }
 
 let closeDb: () => Promise<void>;
@@ -147,10 +151,11 @@ test("login succeeds and returns a usable token", async () => {
     body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
   assert.equal(res.status, 200);
-  const payload = res.body as { token: string; admin: { email: string } };
-  assert.ok(payload.token);
+  const payload = res.body as { admin: { email: string } };
+  const cookie = res.setCookie?.split(";", 1)[0];
+  assert.ok(cookie?.startsWith("mqicma_admin="));
   assert.equal(payload.admin.email, ADMIN_EMAIL);
-  token = payload.token;
+  token = cookie!.slice("mqicma_admin=".length);
 
   const me = await api("/auth/me", { token });
   assert.equal(me.status, 200);
@@ -172,7 +177,7 @@ test("logout revokes the current token", async () => {
     body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
   });
   assert.equal(loggedIn.status, 200);
-  token = (loggedIn.body as { token: string }).token;
+  token = loggedIn.setCookie!.split(";", 1)[0].slice("mqicma_admin=".length);
 });
 
 test("product create/read/update/delete round-trips", async () => {
@@ -484,7 +489,7 @@ test("an uploaded picture is stored in the database, not on the filesystem", asy
 
   const created = await fetch(`${baseUrl}/api/products`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: `mqicma_admin=${token}` },
     body: form,
   });
   assert.equal(created.status, 201);
@@ -558,7 +563,7 @@ test("an upload survives the process that received it", async () => {
 
   const created = await fetch(`${baseUrl}/api/products`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Cookie: `mqicma_admin=${token}` },
     body: form,
   });
   assert.equal(created.status, 201);

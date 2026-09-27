@@ -111,6 +111,7 @@ Backend (`backend/.env`; templates in `backend/.env.example` and
 | `TRUST_PROXY`                              | no       | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP.                   |
 | `PUBLIC_ORIGIN`                            | production | Canonical `https://` origin used to redirect HTTP requests. Set it to the deployed domain.       |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no       | Read by `npm run seed` only.                                                                    |
+| `SEED_RESET_CONFIRM`                      | no       | Required as `RESET_PRODUCTION_DATA` with `SEED_RESET=true` in production.                       |
 | `TEST_DATABASE_URL`                        | no       | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`.                      |
 
 Frontend (`frontend/.env`, template in `frontend/.env.example`):
@@ -135,7 +136,10 @@ colliding with anything else already in it.
 - To change the schema, add a new numbered file. Never edit an applied one.
 - **Seeding** is non-destructive by default: `npm run seed` tops up empty tables
   and leaves existing rows alone. `SEED_RESET=true npm run seed` replaces the
-  demo catalogue. Never run the reset form against production.
+  demo catalogue inside a transaction. In production, also set
+  `SEED_RESET_CONFIRM=RESET_PRODUCTION_DATA` as a second explicit confirmation.
+  Never run the reset form against production data unless that destructive
+  operation is intentional and approved.
 - **Tables**: `admins`, `categories`, `products`, `services`, `events`,
   `site_content`, `contact_messages`, `uploads`, `rate_limit_hits`,
   `admin_sessions`, plus indexes on the columns the API filters and sorts on.
@@ -253,10 +257,11 @@ restart without anything being deployed.
 Rate limits live in PostgreSQL and are shared across restarts and instances:
 300 requests / 15 min across `/api`, 10 failed logins / 15 min per IP and 5 per
 account on `/api/auth/login`, and 5 submissions / hour on `POST /api/contact`.
-Admin tokens live in the current browser tab and expire after 15 minutes without
+The admin JWT is issued only in an HttpOnly, Secure-in-production, SameSite
+cookie; frontend JavaScript cannot read it. It expires after 15 minutes without
 activity on both the client and API (with a 12-hour absolute limit). The API
 tracks each login session in PostgreSQL, so a copied token also stops working
-after the idle window.
+after the idle window. The legacy localStorage token key is deleted on load.
 
 ## Tests
 

@@ -73,7 +73,12 @@ app.use((_req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   next();
 });
-app.use(cors({ origin: CORS_ORIGINS.length ? CORS_ORIGINS : false }));
+app.use(
+  cors({
+    origin: CORS_ORIGINS.length ? CORS_ORIGINS : false,
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "100kb" }));
 // Uploaded images live in the database (see migration 003), because this
 // instance's filesystem does not survive a restart. The static mount stays in
@@ -222,6 +227,14 @@ export { app };
 // Only bind a port when started as a program. Importing this module (the test
 // suite does) should build the app without occupying a port.
 if (require.main === module) {
+  process.on("unhandledRejection", (reason) => {
+    logger.error(reason, "Unhandled promise rejection; terminating process");
+    process.exit(1);
+  });
+  process.on("uncaughtException", (error) => {
+    logger.error(error, "Uncaught exception; terminating process");
+    process.exit(1);
+  });
   // Migrations run once at startup, before the port opens, so the process
   // never serves traffic against a schema that is not ready yet.
   (process.env.RUN_MIGRATIONS === "false" ? Promise.resolve([]) : runMigrations())

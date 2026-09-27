@@ -5,16 +5,16 @@ import {
   getContactCount,
   getContacts,
 } from "../controllers/contact.controller";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAdmin } from "../middleware/requireAuth";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
 export const contactRouter = Router();
 contactRouter.post("/", asyncHandler(createContact));
-contactRouter.get("/", requireAuth, asyncHandler(getContacts));
-contactRouter.get("/count", requireAuth, asyncHandler(getContactCount));
+contactRouter.get("/", requireAdmin, asyncHandler(getContacts));
+contactRouter.get("/count", requireAdmin, asyncHandler(getContactCount));
 contactRouter.delete(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   asyncHandler(deleteContact),
 );

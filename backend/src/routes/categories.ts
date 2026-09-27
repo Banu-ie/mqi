@@ -5,21 +5,21 @@ import {
   getCategories,
   updateCategory,
 } from "../controllers/categories.controller";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAdmin } from "../middleware/requireAuth";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
 export const categoriesRouter = Router();
 categoriesRouter.get("/", asyncHandler(getCategories));
-categoriesRouter.post("/", requireAuth, asyncHandler(createCategory));
+categoriesRouter.post("/", requireAdmin, asyncHandler(createCategory));
 categoriesRouter.put(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   asyncHandler(updateCategory),
 );
 categoriesRouter.delete(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   asyncHandler(deleteCategory),
 );

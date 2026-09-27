@@ -6,7 +6,7 @@ import {
   getProducts,
   updateProduct,
 } from "../controllers/products.controller";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAdmin } from "../middleware/requireAuth";
 import { productImageUpload, verifyImageContent } from "../middleware/upload";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
@@ -14,13 +14,13 @@ export const productsRouter = Router();
 productsRouter.get(
   "/",
   (req, res, next) =>
-    req.query.all === "true" ? requireAuth(req, res, next) : next(),
+    req.query.all === "true" ? requireAdmin(req, res, next) : next(),
   asyncHandler(getProducts),
 );
 productsRouter.get("/:id", validateUuidParam, asyncHandler(getProductById));
 productsRouter.post(
   "/",
-  requireAuth,
+  requireAdmin,
   productImageUpload,
   verifyImageContent,
   asyncHandler(createProduct),
@@ -28,7 +28,7 @@ productsRouter.post(
 productsRouter.put(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   productImageUpload,
   verifyImageContent,
   asyncHandler(updateProduct),
@@ -36,6 +36,6 @@ productsRouter.put(
 productsRouter.delete(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   asyncHandler(deleteProduct),
 );

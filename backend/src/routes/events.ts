@@ -6,7 +6,7 @@ import {
   getEvents,
   updateEvent,
 } from "../controllers/events.controller";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAdmin } from "../middleware/requireAuth";
 import { eventImageUpload, verifyImageContent } from "../middleware/upload";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
@@ -15,7 +15,7 @@ eventsRouter.get("/", asyncHandler(getEvents));
 eventsRouter.get("/:id", validateUuidParam, asyncHandler(getEventById));
 eventsRouter.post(
   "/",
-  requireAuth,
+  requireAdmin,
   eventImageUpload,
   verifyImageContent,
   asyncHandler(createEvent),
@@ -23,7 +23,7 @@ eventsRouter.post(
 eventsRouter.put(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   eventImageUpload,
   verifyImageContent,
   asyncHandler(updateEvent),
@@ -31,6 +31,6 @@ eventsRouter.put(
 eventsRouter.delete(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   asyncHandler(deleteEvent),
 );

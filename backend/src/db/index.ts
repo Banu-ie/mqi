@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Pool, types, type PoolClient } from "pg";
 import { logger } from "../lib/logger";
 
@@ -50,6 +51,7 @@ export const pool = new Pool({
   connectionTimeoutMillis: 20_000,
   idleTimeoutMillis: 30_000,
 });
+const transactionContext = new AsyncLocalStorage<PoolClient>();
 const migrationPool = migrationConnectionString
   ? new Pool({
       connectionString: migrationConnectionString,
@@ -86,7 +88,10 @@ export async function query<T extends object>(
   sql: string,
   params: unknown[] = [],
 ): Promise<T[]> {
-  const result = await pool.query(sql, params);
+  const client = transactionContext.getStore();
+  const result = client
+    ? await client.query(sql, params)
+    : await pool.query(sql, params);
   return result.rows as T[];
 }
 
@@ -103,7 +108,10 @@ export async function execute(
   sql: string,
   params: unknown[] = [],
 ): Promise<number> {
-  const result = await pool.query(sql, params);
+  const client = transactionContext.getStore();
+  const result = client
+    ? await client.query(sql, params)
+    : await pool.query(sql, params);
   return result.rowCount ?? 0;
 }
 
@@ -117,7 +125,7 @@ export async function withTransaction<T>(
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const result = await fn(client);
+    const result = await transactionContext.run(client, () => fn(client));
     await client.query("COMMIT");
     return result;
   } catch (error) {

@@ -6,7 +6,7 @@ import {
   getServices,
   updateService,
 } from "../controllers/services.controller";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAdmin } from "../middleware/requireAuth";
 import { serviceImageUpload, verifyImageContent } from "../middleware/upload";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
@@ -14,13 +14,13 @@ export const servicesRouter = Router();
 servicesRouter.get(
   "/",
   (req, res, next) =>
-    req.query.all === "true" ? requireAuth(req, res, next) : next(),
+    req.query.all === "true" ? requireAdmin(req, res, next) : next(),
   asyncHandler(getServices),
 );
 servicesRouter.get("/:id", validateUuidParam, asyncHandler(getServiceById));
 servicesRouter.post(
   "/",
-  requireAuth,
+  requireAdmin,
   serviceImageUpload,
   verifyImageContent,
   asyncHandler(createService),
@@ -28,7 +28,7 @@ servicesRouter.post(
 servicesRouter.put(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   serviceImageUpload,
   verifyImageContent,
   asyncHandler(updateService),
@@ -36,6 +36,6 @@ servicesRouter.put(
 servicesRouter.delete(
   "/:id",
   validateUuidParam,
-  requireAuth,
+  requireAdmin,
   asyncHandler(deleteService),
 );

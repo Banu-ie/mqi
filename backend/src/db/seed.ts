@@ -1,6 +1,6 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { closeDb, execute, queryOne, runMigrations } from "./index";
+import { closeDb, execute, queryOne, runMigrations, withTransaction } from "./index";
 import {
   Admins,
   Categories,
@@ -16,12 +16,14 @@ import { logger } from "../lib/logger";
 // tables and leaves existing rows alone — safe to run against a deployed
 // database by accident.
 const RESET = process.env.SEED_RESET === "true";
+const SEED_TABLES = new Set(["products", "services", "events"]);
 
 async function replaceTable(
   table: string,
   rowCount: number,
   insert: () => Promise<void>,
 ) {
+  if (!SEED_TABLES.has(table)) throw new Error(`Seed table is not allowed: ${table}`);
   const row = await queryOne<{ count: number }>(
     `SELECT COUNT(*)::int AS count FROM ${table}`,
   );
@@ -99,6 +101,15 @@ const EVENT_IMAGES: Record<string, string> = {
 };
 
 async function main() {
+  if (
+    RESET &&
+    process.env.NODE_ENV === "production" &&
+    process.env.SEED_RESET_CONFIRM !== "RESET_PRODUCTION_DATA"
+  ) {
+    throw new Error(
+      "Production reset is blocked. Set SEED_RESET_CONFIRM=RESET_PRODUCTION_DATA as a second explicit confirmation.",
+    );
+  }
   const applied = await runMigrations();
   console.log(
     applied.length
@@ -112,13 +123,14 @@ async function main() {
     !adminEmail ||
     !adminPassword ||
     adminPassword === "REDACTED" ||
-    adminPassword === "REDACTED"
+    adminPassword === "replace-with-a-unique-password"
   ) {
     throw new Error(
       "SEED_ADMIN_EMAIL and a unique SEED_ADMIN_PASSWORD are required; default credentials are not allowed.",
     );
   }
   const passwordHash = await bcrypt.hash(adminPassword, 12);
+  await withTransaction(async () => {
   await Admins.upsert({
     name: "Admin",
     email: adminEmail,
@@ -305,6 +317,7 @@ async function main() {
 
   console.log("Seed complete.");
   console.log(`Admin account ensured: ${adminEmail}`);
+  });
 }
 
 main()

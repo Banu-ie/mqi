@@ -34,7 +34,7 @@ export const swaggerSpec = swaggerJsdoc({
       "/auth/me": {
         get: {
           tags: ["Auth"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           responses: {
             "200": { description: "Current admin" },
             "401": { description: "Unauthenticated" },
@@ -54,7 +54,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         post: {
           tags: ["Products"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           requestBody: {
             required: true,
             content: {
@@ -88,7 +88,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         put: {
           tags: ["Products"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             {
               in: "path",
@@ -114,7 +114,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         delete: {
           tags: ["Products"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             {
               in: "path",
@@ -143,7 +143,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         post: {
           tags: ["Services"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           requestBody: {
             required: true,
             content: {
@@ -177,7 +177,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         put: {
           tags: ["Services"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             {
               in: "path",
@@ -203,7 +203,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         delete: {
           tags: ["Services"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             {
               in: "path",
@@ -255,7 +255,7 @@ export const swaggerSpec = swaggerJsdoc({
         post: {
           tags: ["Events"],
           summary: "Yeni tədbir yarat",
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           requestBody: {
             required: true,
             content: {
@@ -336,7 +336,7 @@ export const swaggerSpec = swaggerJsdoc({
         put: {
           tags: ["Events"],
           summary: "Tədbiri yenilə",
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             {
               in: "path",
@@ -391,7 +391,7 @@ export const swaggerSpec = swaggerJsdoc({
         delete: {
           tags: ["Events"],
           summary: "Tədbiri sil",
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             {
               in: "path",
@@ -441,7 +441,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         post: {
           tags: ["Categories"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           responses: {
             "201": { description: "Yaradıldı" },
             "400": { description: "Validation error" },
@@ -453,7 +453,7 @@ export const swaggerSpec = swaggerJsdoc({
       "/categories/{id}": {
         put: {
           tags: ["Categories"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             { in: "path", name: "id", required: true, schema: { type: "string" } },
           ],
@@ -467,7 +467,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         delete: {
           tags: ["Categories"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           parameters: [
             { in: "path", name: "id", required: true, schema: { type: "string" } },
           ],
@@ -489,7 +489,7 @@ export const swaggerSpec = swaggerJsdoc({
         },
         put: {
           tags: ["Content"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           responses: {
             "200": { description: "Updated" },
             "400": { description: "Validation error" },
@@ -500,7 +500,7 @@ export const swaggerSpec = swaggerJsdoc({
       "/contact": {
         get: {
           tags: ["Contact"],
-          security: [{ bearerAuth: [] }],
+          security: [{ cookieAuth: [] }],
           responses: {
             "200": { description: "Messages" },
             "401": { description: "Unauthenticated" },
@@ -525,10 +525,10 @@ export const swaggerSpec = swaggerJsdoc({
     },
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
+        cookieAuth: {
+          type: "apiKey",
+          in: "cookie",
+          name: "mqicma_admin",
         },
       },
       schemas: {
@@ -800,7 +800,6 @@ export const swaggerSpec = swaggerJsdoc({
         LoginResponse: {
           type: "object",
           properties: {
-            token: { type: "string" },
             admin: {
               type: "object",
               properties: {

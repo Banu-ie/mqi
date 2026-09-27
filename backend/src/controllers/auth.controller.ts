@@ -5,6 +5,11 @@ import { Admins, AdminSessions } from "../db/models";
 import { signAdminToken } from "../lib/auth";
 import type { AuthedRequest } from "../middleware/requireAuth";
 import { randomUUID } from "node:crypto";
+import {
+  ADMIN_COOKIE,
+  ADMIN_COOKIE_OPTIONS,
+  clearAdminCookie,
+} from "../lib/sessionCookie";
 const loginSchema = z.object({
   email: z.string().email().max(320),
   password: z.string().min(1).max(1024),
@@ -21,8 +26,10 @@ export async function login(req: Request, res: Response) {
     parsed.data.password,
     passwordHash,
   );
-  if (!admin || !passwordMatches)
+  if (!admin || !passwordMatches) {
+    clearAdminCookie(res);
     return res.status(401).json({ error: "Email və ya şifrə yanlışdır." });
+  }
   if (Number(admin.passwordHash.slice(4, 6)) < 12) {
     await Admins.updatePasswordHash(admin.id, await bcrypt.hash(parsed.data.password, 12));
   }
@@ -35,8 +42,8 @@ export async function login(req: Request, res: Response) {
     role: admin.role,
     tokenVersion: admin.tokenVersion,
   });
+  res.cookie(ADMIN_COOKIE, token, ADMIN_COOKIE_OPTIONS);
   return res.json({
-    token,
     admin: {
       id: admin.id,
       name: admin.name,
@@ -48,6 +55,7 @@ export async function login(req: Request, res: Response) {
 export async function logout(req: AuthedRequest, res: Response) {
   await AdminSessions.revoke(req.admin!.sid);
   await Admins.bumpTokenVersion(req.admin!.sub);
+  clearAdminCookie(res);
   return res.status(204).send();
 }
 export async function getMe(req: AuthedRequest, res: Response) {

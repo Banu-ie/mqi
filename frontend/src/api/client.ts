@@ -11,49 +11,52 @@ export const API_BASE_URL =
 // same-origin fallback this correctly resolves to a root-relative path.
 export const resolveMediaUrl = (value: string) =>
   value.startsWith("/") ? `${API_BASE_URL.replace(/\/api\/?$/, "")}${value}` : value;
-const TOKEN_KEY = "mqicma_admin_token";
+const LEGACY_TOKEN_KEY = "mqicma_admin_token";
+const SESSION_KEY = "mqicma_admin_session";
 const ACTIVITY_KEY = "mqicma_admin_last_activity";
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
 const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+
+function clearLegacyToken() {
+  try {
+    localStorage.removeItem(LEGACY_TOKEN_KEY);
+  } catch {
+    // The app does not depend on web storage for authentication.
+  }
+}
+clearLegacyToken();
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); this.name = "ApiError"; }
 }
 
-function clearLegacyToken() {
-  localStorage.removeItem(TOKEN_KEY);
-}
-
-export const getToken = () => {
-  clearLegacyToken();
-  const token = sessionStorage.getItem(TOKEN_KEY);
+export const hasActiveSession = () => {
+  const session = sessionStorage.getItem(SESSION_KEY);
   const startedAt = Number(sessionStorage.getItem(`${ACTIVITY_KEY}_started`));
   const lastActivity = Number(sessionStorage.getItem(ACTIVITY_KEY));
-  if (!token || !startedAt || !lastActivity || Date.now() - lastActivity >= IDLE_TIMEOUT_MS || Date.now() - startedAt >= SESSION_MAX_AGE_MS) {
-    clearToken();
-    return null;
+  if (!session || !startedAt || !lastActivity || Date.now() - lastActivity >= IDLE_TIMEOUT_MS || Date.now() - startedAt >= SESSION_MAX_AGE_MS) {
+    clearAdminSession();
+    return false;
   }
-  return token;
+  return true;
 };
-export const setToken = (token: string) => {
-  clearLegacyToken();
-  sessionStorage.setItem(TOKEN_KEY, token);
+export const beginAdminSession = () => {
+  sessionStorage.setItem(SESSION_KEY, "active");
   const now = Date.now();
   sessionStorage.setItem(ACTIVITY_KEY, String(now));
   sessionStorage.setItem(`${ACTIVITY_KEY}_started`, String(now));
 };
-export const clearToken = () => {
-  clearLegacyToken();
-  sessionStorage.removeItem(TOKEN_KEY);
+export const clearAdminSession = () => {
+  sessionStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(ACTIVITY_KEY);
   sessionStorage.removeItem(`${ACTIVITY_KEY}_started`);
 };
 
 export function recordAdminActivity() {
-  if (!getToken()) return;
+  if (!hasActiveSession()) return;
   const now = Date.now();
   const previous = Number(sessionStorage.getItem(ACTIVITY_KEY));
-  if (sessionStorage.getItem(TOKEN_KEY) && now - previous >= 60_000) {
+  if (now - previous >= 60_000) {
     sessionStorage.setItem(ACTIVITY_KEY, String(now));
   }
 }
@@ -63,19 +66,15 @@ export async function apiRequest<T>(path: string, { method = "GET", body, auth =
   const headers: Record<string, string> = {};
   const isFormData = body instanceof FormData;
   if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
-  if (auth) {
-    const token = getToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
   let response: Response;
-  try { response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body) }); }
+  try { response = await fetch(`${API_BASE_URL}${path}`, { method, headers, credentials: "include", body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body) }); }
   catch { throw new ApiError("Serverə qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın.", 0); }
   if (response.status === 204) return undefined as T;
   const text = await response.text();
   let data: unknown = null;
   if (text) { try { data = JSON.parse(text); } catch { /* handled as an API error below */ } }
   if (!response.ok) {
-    if (auth && response.status === 401) clearToken();
+    if (auth && response.status === 401) clearAdminSession();
     throw new ApiError((data as { error?: string } | null)?.error || "Naməlum xəta baş verdi.", response.status);
   }
   return data as T;
