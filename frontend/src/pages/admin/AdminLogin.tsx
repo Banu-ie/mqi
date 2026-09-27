@@ -96,9 +96,6 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          <p className="text-center text-[#6B7A99] text-xs mt-6">
-            Demo: admin@mqicma.az / REDACTED
-          </p>
         </div>
 
         <div className="text-center mt-6">

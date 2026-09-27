@@ -128,8 +128,12 @@ export default function Home() {
 
         {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50">
-          <span className="text-xs">Aşağı</span>
-          <div className="w-px h-8 bg-white/30 animate-pulse" />
+          <Link to="#" className="flex flex-col items-center gap-2">
+            <span className="text-xs" onClick={() => window.scrollTo({ top: window.innerHeight, behavior: "smooth" })}>
+              Aşağı
+            </span>
+            <div className="w-px h-8 bg-white/30 animate-bounce hover:shadow-lg"  onClick={() => window.scrollTo({ top: window.innerHeight, behavior: "smooth" })} />
+          </Link>
         </div>
       </section>
 
@@ -154,7 +158,7 @@ export default function Home() {
               </p>
               <Link
                 to="/haqqimizda"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-[#3B6FE0] text-[#3B6FE0] font-semibold hover:bg-[#3B6FE0] hover:text-white transition-all duration-200"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 linear-gradient(to right, #e865b6 0%, #e865b6 100%) font-semibold hover:bg-[#d1459c] hover:text-white transition-all duration-200"
               >
                 Daha ətraflı
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">

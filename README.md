@@ -9,17 +9,17 @@ The site content is in Azerbaijani.
 
 ## Tech stack
 
-| Layer | Choice |
-| --- | --- |
-| Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 4, React Router 7 |
-| Backend | Node.js, Express 4, TypeScript |
-| Database | PostgreSQL via `pg` (managed: Neon) |
-| Auth | JWT (12 h expiry) + bcrypt password hashing |
-| Validation | zod |
-| Uploads | multer + sharp (images resized and stored in Postgres) |
-| API docs | Swagger UI / OpenAPI 3 (`swagger-jsdoc`) |
-| Hardening | helmet, express-rate-limit, CORS allowlist, 100 kB body cap |
-| Tests | `node:test` via `tsx`, against a throwaway PostgreSQL schema |
+| Layer      | Choice                                                       |
+| ---------- | ------------------------------------------------------------ |
+| Frontend   | React 19, TypeScript, Vite 8, Tailwind CSS 4, React Router 7 |
+| Backend    | Node.js, Express 4, TypeScript                               |
+| Database   | PostgreSQL via `pg` (managed: Neon)                          |
+| Auth       | JWT (12 h expiry) + bcrypt password hashing                  |
+| Validation | zod                                                          |
+| Uploads    | multer + sharp (images resized and stored in Postgres)       |
+| API docs   | Swagger UI / OpenAPI 3 (`swagger-jsdoc`)                     |
+| Hardening  | helmet, express-rate-limit, CORS allowlist, 100 kB body cap  |
+| Tests      | `node:test` via `tsx`, against a throwaway PostgreSQL schema |
 
 ## Repository layout
 
@@ -89,31 +89,31 @@ frontend `.env` is needed locally.
 ### Admin access
 
 The panel lives at `/admin/login`. `npm run seed` creates an admin from
-`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (defaults `admin@mqicma.az` /
-`REDACTED`). **Change the password before deploying.**
+`SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (required by `npm run seed`; use a
+unique password). Never commit or reuse the production password.
 
 ## Environment variables
 
 Backend (`backend/.env`; templates in `backend/.env.example` and
 `backend/.env.production.example`):
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | **yes** | PostgreSQL connection string. Server exits on boot if unset. Use the *pooled* endpoint on Neon. |
-| `JWT_SECRET` | **yes** | Server exits on boot if unset. Use ≥48 random bytes. |
-| `DATABASE_SCHEMA` | no | Schema holding this app's tables. Default `mqicma`. |
-| `DATABASE_POOL_MAX` | no | Max pooled connections, default `10`. Keep low on serverless Postgres. |
-| `PORT` | no | Default `4000`. |
-| `CORS_ORIGIN` | no | Comma-separated allowlist. Unnecessary in a single-origin deployment. |
-| `TRUST_PROXY` | no | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP. |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no | Read by `npm run seed` only. |
-| `TEST_DATABASE_URL` | no | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`. |
+| Variable                                   | Required | Notes                                                                                           |
+| ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                             | **yes**  | PostgreSQL connection string. Server exits on boot if unset. Use the _pooled_ endpoint on Neon. |
+| `JWT_SECRET`                               | **yes**  | Server exits on boot if unset. Use ≥48 random bytes.                                            |
+| `DATABASE_SCHEMA`                          | no       | Schema holding this app's tables. Default `mqicma`.                                             |
+| `DATABASE_POOL_MAX`                        | no       | Max pooled connections, default `10`. Keep low on serverless Postgres.                          |
+| `PORT`                                     | no       | Default `4000`.                                                                                 |
+| `CORS_ORIGIN`                              | no       | Comma-separated allowlist. Unnecessary in a single-origin deployment.                           |
+| `TRUST_PROXY`                              | no       | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP.                   |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no       | Read by `npm run seed` only.                                                                    |
+| `TEST_DATABASE_URL`                        | no       | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`.                      |
 
 Frontend (`frontend/.env`, template in `frontend/.env.example`):
 
-| Variable | Required | Notes |
-| --- | --- | --- |
-| `VITE_API_URL` | no | Full API base URL including `/api`. Baked in at build time. Leave unset for a single-origin deployment — the app then calls same-origin `/api`. |
+| Variable       | Required | Notes                                                                                                                                           |
+| -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL` | no       | Full API base URL including `/api`. Baked in at build time. Leave unset for a single-origin deployment — the app then calls same-origin `/api`. |
 
 Everything prefixed `VITE_` ships inside the JS bundle — never put a secret there.
 
@@ -205,7 +205,7 @@ API and the built React app together, exactly as deployed:
 It builds both halves and starts the server on `:4000` (override with `PORT`).
 Requires `backend/.env` with `DATABASE_URL` and `JWT_SECRET`.
 
-It builds *without* `VITE_API_URL`, so the bundle calls same-origin `/api` —
+It builds _without_ `VITE_API_URL`, so the bundle calls same-origin `/api` —
 and since the same process answers both, everything is reachable on
 `http://localhost:4000` alone and there is no CORS in the picture.
 
@@ -239,7 +239,7 @@ the service is stateless and a redeploy cannot lose data.
 
 Deployment checklist:
 
-1. Create the managed database and note the *pooled* connection string.
+1. Create the managed database and note the _pooled_ connection string.
 2. Set `DATABASE_URL`, `JWT_SECRET` and `TRUST_PROXY=true`. Migrations run
    themselves on first boot; nothing else needs preparing.
 3. Build with `npm run build:all` and start with `npm start`. Leave
@@ -273,9 +273,11 @@ Deployed on Render's free tier as a single web service:
 ```
 Site:         https://mqicma.onrender.com
 API:          https://mqicma.onrender.com/api
-Swagger:      https://mqicma.onrender.com/api/docs
 Admin panel:  https://mqicma.onrender.com/admin/login
 ```
+
+Swagger is available locally at `/api/docs` while running in development; it
+is disabled on the production deployment.
 
 The free instance spins down after roughly 15 minutes without traffic, so the
 first request after an idle period takes 30-60 seconds while it wakes up.

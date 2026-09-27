@@ -29,16 +29,18 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_ENV
+        value: "production"
       - key: DATABASE_URL
-        sync: false          # Neon pooled connection string (a secret)
+        sync: false # Neon pooled connection string (a secret)
       - key: DATABASE_SCHEMA
         value: mqicma
       - key: DATABASE_POOL_MAX
         value: "10"
       - key: JWT_SECRET
-        generateValue: true  # Render generates and stores a strong secret
+        generateValue: true # Render generates and stores a strong secret
       - key: TRUST_PROXY
-        value: "true"        # so rate limiting sees the real client IP
+        value: "true" # so rate limiting sees the real client IP
     # No disk, and none needed: uploaded images go into Postgres rather than the
     # filesystem (see backend/src/lib/imageStore.ts and migration 003).
     #
