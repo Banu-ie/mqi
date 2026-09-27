@@ -12,14 +12,50 @@ export const API_BASE_URL =
 export const resolveMediaUrl = (value: string) =>
   value.startsWith("/") ? `${API_BASE_URL.replace(/\/api\/?$/, "")}${value}` : value;
 const TOKEN_KEY = "mqicma_admin_token";
+const ACTIVITY_KEY = "mqicma_admin_last_activity";
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); this.name = "ApiError"; }
 }
 
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
-export const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
-export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+function clearLegacyToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+export const getToken = () => {
+  clearLegacyToken();
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  const startedAt = Number(sessionStorage.getItem(`${ACTIVITY_KEY}_started`));
+  const lastActivity = Number(sessionStorage.getItem(ACTIVITY_KEY));
+  if (!token || !startedAt || !lastActivity || Date.now() - lastActivity >= IDLE_TIMEOUT_MS || Date.now() - startedAt >= SESSION_MAX_AGE_MS) {
+    clearToken();
+    return null;
+  }
+  return token;
+};
+export const setToken = (token: string) => {
+  clearLegacyToken();
+  sessionStorage.setItem(TOKEN_KEY, token);
+  const now = Date.now();
+  sessionStorage.setItem(ACTIVITY_KEY, String(now));
+  sessionStorage.setItem(`${ACTIVITY_KEY}_started`, String(now));
+};
+export const clearToken = () => {
+  clearLegacyToken();
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(ACTIVITY_KEY);
+  sessionStorage.removeItem(`${ACTIVITY_KEY}_started`);
+};
+
+export function recordAdminActivity() {
+  const now = Date.now();
+  const previous = Number(sessionStorage.getItem(ACTIVITY_KEY));
+  if (sessionStorage.getItem(TOKEN_KEY) && now - previous >= 60_000) {
+    sessionStorage.setItem(ACTIVITY_KEY, String(now));
+  }
+}
 
 interface RequestOptions { method?: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown; auth?: boolean; }
 export async function apiRequest<T>(path: string, { method = "GET", body, auth = false }: RequestOptions = {}): Promise<T> {

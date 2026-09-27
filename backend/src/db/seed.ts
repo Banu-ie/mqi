@@ -118,7 +118,7 @@ async function main() {
       "SEED_ADMIN_EMAIL and a unique SEED_ADMIN_PASSWORD are required; default credentials are not allowed.",
     );
   }
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   await Admins.upsert({
     name: "Admin",
     email: adminEmail,

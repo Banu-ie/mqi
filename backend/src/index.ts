@@ -19,6 +19,7 @@ import { contactRouter } from "./routes/contact";
 import { uploadsRouter } from "./routes/uploads";
 import { logger } from "./lib/logger";
 import { requestId } from "./middleware/requestId";
+import { PostgresRateLimitStore } from "./lib/postgresRateLimitStore";
 
 const app = express();
 app.use(requestId);
@@ -36,6 +37,19 @@ const CORS_ORIGINS = (process.env.CORS_ORIGIN || defaultCorsOrigins)
 // X-Forwarded-For; without this the rate limiters would see the proxy IP only.
 if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 
+// TLS terminates at the hosting proxy. Redirect any plain HTTP request before
+// it reaches routes; trust proxy must be enabled on the deployed service.
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production" && req.get("x-forwarded-proto") === "http") {
+    const publicOrigin = process.env.PUBLIC_ORIGIN;
+    if (!publicOrigin || !publicOrigin.startsWith("https://")) {
+      return res.status(400).send("Secure public origin is not configured.");
+    }
+    return res.redirect(308, `${publicOrigin.replace(/\/$/, "")}${req.originalUrl}`);
+  }
+  next();
+});
+
 // crossOriginResourcePolicy is relaxed so uploaded images can be loaded from
 // the frontend when it is served from a different origin.
 app.use(
@@ -50,10 +64,15 @@ app.use(
         "style-src": ["'self'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
         "connect-src": ["'self'"],
+        "frame-ancestors": ["'none'"],
       },
     },
   }),
 );
+app.use((_req, res, next) => {
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 app.use(cors({ origin: CORS_ORIGINS.length ? CORS_ORIGINS : false }));
 app.use(express.json({ limit: "100kb" }));
 // Uploaded images live in the database (see migration 003), because this
@@ -74,18 +93,21 @@ const rateLimitMessage = (message: string) => ({
 // Broad ceiling for the whole API, then tighter limits on the two endpoints an
 // abuser would actually target: credential stuffing on login and contact spam.
 const apiLimiter = rateLimit({
+  store: new PostgresRateLimitStore("api"),
   ...rateLimitMessage(
     "Çox sayda sorğu göndərildi. Bir az sonra yenidən cəhd edin.",
   ),
   limit: 300,
 });
 const loginLimiter = rateLimit({
+  store: new PostgresRateLimitStore("login-ip"),
   ...rateLimitMessage(
     "Çox sayda giriş cəhdi. 15 dəqiqə sonra yenidən cəhd edin.",
   ),
   limit: 10,
 });
 const accountLoginLimiter = rateLimit({
+  store: new PostgresRateLimitStore("login-account"),
   ...rateLimitMessage(
     "Bu hesab üçün çox sayda giriş cəhdi oldu. 15 dəqiqə sonra yenidən cəhd edin.",
   ),
@@ -99,6 +121,7 @@ const accountLoginLimiter = rateLimit({
   },
 });
 const contactLimiter = rateLimit({
+  store: new PostgresRateLimitStore("contact"),
   ...rateLimitMessage(
     "Çox sayda mesaj göndərildi. Bir saat sonra yenidən cəhd edin.",
   ),
@@ -169,6 +192,9 @@ app.use(
           ? "Şəkil 5 MB-dan böyük ola bilməz."
           : "Yalnız JPG, PNG, WEBP və GIF şəkillərinə icazə verilir.";
       return res.status(400).json({ error: message });
+    }
+    if ((err as { status?: number } | null)?.status === 400) {
+      return res.status(400).json({ error: "Yüklənən fayl etibarlı şəkil deyil." });
     }
     // body-parser surfaces malformed/oversized request bodies as errors with a
     // `type` field. Those are client faults and must not be reported as 500s.

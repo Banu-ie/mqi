@@ -41,6 +41,8 @@ services:
         generateValue: true # Render generates and stores a strong secret
       - key: TRUST_PROXY
         value: "true" # so rate limiting sees the real client IP
+      - key: PUBLIC_ORIGIN
+        value: https://mqicma.onrender.com # update when using a custom domain
     # No disk, and none needed: uploaded images go into Postgres rather than the
     # filesystem (see backend/src/lib/imageStore.ts and migration 003).
     #

@@ -1,6 +1,5 @@
 import sharp from "sharp";
 import { Uploads, type UploadKind } from "../db/models";
-import { logger } from "./logger";
 
 /**
  * Where uploaded pictures are kept.
@@ -33,9 +32,8 @@ const extensionByMime = new Map<string, string>([
  * lands under 300 kB, which is what makes keeping images in a database on a
  * free Postgres tier reasonable rather than reckless.
  *
- * If sharp cannot read the file we keep the original bytes: the upload already
- * passed the type check, and storing it unprocessed is a better outcome for the
- * admin than a failed save.
+ * Decoder failures are rejected. The declared MIME type and extension are
+ * client supplied and cannot be treated as proof that the file is an image.
  */
 async function encode(
   file: Pick<Express.Multer.File, "buffer" | "mimetype">,
@@ -57,10 +55,9 @@ async function encode(
       .toBuffer();
     return { mime: "image/webp", bytes };
   } catch (error) {
-    logger.warn("Could not re-encode an upload, storing it as sent", {
-      name: (error as Error).name,
-    });
-    return { mime: file.mimetype, bytes: file.buffer };
+    const invalidImage = new Error("Uploaded file is not a supported image.");
+    (invalidImage as Error & { status: number }).status = 400;
+    throw invalidImage;
   }
 }
 

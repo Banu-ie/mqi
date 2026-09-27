@@ -106,6 +106,7 @@ Backend (`backend/.env`; templates in `backend/.env.example` and
 | `PORT`                                     | no       | Default `4000`.                                                                                 |
 | `CORS_ORIGIN`                              | no       | Comma-separated allowlist. Unnecessary in a single-origin deployment.                           |
 | `TRUST_PROXY`                              | no       | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP.                   |
+| `PUBLIC_ORIGIN`                            | production | Canonical `https://` origin used to redirect HTTP requests. Set it to the deployed domain.       |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no       | Read by `npm run seed` only.                                                                    |
 | `TEST_DATABASE_URL`                        | no       | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`.                      |
 
@@ -133,8 +134,8 @@ colliding with anything else already in it.
   and leaves existing rows alone. `SEED_RESET=true npm run seed` replaces the
   demo catalogue. Never run the reset form against production.
 - **Tables**: `admins`, `categories`, `products`, `services`, `events`,
-  `site_content`, `contact_messages`, plus indexes on the columns the API
-  filters and sorts on.
+  `site_content`, `contact_messages`, `uploads`, `rate_limit_hits`, plus indexes
+  on the columns the API filters and sorts on.
 - Products reference their category **by name**, not by id. Category renames
   cascade to products in a transaction, and deleting a category that still holds
   products is rejected with `409`.
@@ -173,8 +174,11 @@ fit 1600 px, re-encoded to WebP and stored in the database, then served from
 `/uploads/...`. Nothing is written to the filesystem, so an upload survives a
 restart without anything being deployed.
 
-Rate limits: 300 requests / 15 min across `/api`, 10 failed logins / 15 min on
-`/api/auth/login`, 5 submissions / hour on `POST /api/contact`.
+Rate limits live in PostgreSQL and are shared across restarts and instances:
+300 requests / 15 min across `/api`, 10 failed logins / 15 min per IP and 5 per
+account on `/api/auth/login`, and 5 submissions / hour on `POST /api/contact`.
+Admin tokens live in the current browser tab and expire after 15 minutes without
+activity (or at the 12-hour JWT expiry).
 
 ## Tests
 
@@ -240,7 +244,8 @@ the service is stateless and a redeploy cannot lose data.
 Deployment checklist:
 
 1. Create the managed database and note the _pooled_ connection string.
-2. Set `DATABASE_URL`, `JWT_SECRET` and `TRUST_PROXY=true`. Migrations run
+2. Set `DATABASE_URL`, `JWT_SECRET`, `TRUST_PROXY=true` and `PUBLIC_ORIGIN` to
+   the canonical HTTPS site URL. Migrations run
    themselves on first boot; nothing else needs preparing.
 3. Build with `npm run build:all` and start with `npm start`. Leave
    `VITE_API_URL` unset so the bundle calls same-origin `/api`.

@@ -61,6 +61,9 @@ export const Admins = {
       )) > 0
     );
   },
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await execute("UPDATE admins SET password_hash = $2, updated_at = now() WHERE id = $1", [id, passwordHash]);
+  },
 };
 
 export interface CategoryRow {

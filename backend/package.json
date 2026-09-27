@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "commonjs",
+  "engines": { "node": ">=22 <23" },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json && node -e \"require('fs').rmSync('dist/db/migrations',{recursive:true,force:true}); require('fs').cpSync('src/db/migrations','dist/db/migrations',{recursive:true})\"",

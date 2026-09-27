@@ -9,7 +9,7 @@ const loginSchema = z.object({
   password: z.string().min(1).max(1024),
 });
 const DUMMY_PASSWORD_HASH =
-  "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
+  "$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
 export async function login(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success)
@@ -22,6 +22,9 @@ export async function login(req: Request, res: Response) {
   );
   if (!admin || !passwordMatches)
     return res.status(401).json({ error: "Email və ya şifrə yanlışdır." });
+  if (Number(admin.passwordHash.slice(4, 6)) < 12) {
+    await Admins.updatePasswordHash(admin.id, await bcrypt.hash(parsed.data.password, 12));
+  }
   const token = signAdminToken({
     sub: admin.id,
     email: admin.email,
