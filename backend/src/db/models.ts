@@ -22,8 +22,8 @@ function buildUpdate(
   return { clause: parts.join(", "), values };
 }
 
-export interface AdminRow { id: string; name: string; email: string; passwordHash: string; role: string; }
-const ADMIN_SELECT = `SELECT id, name, email, password_hash AS "passwordHash", role FROM admins`;
+export interface AdminRow { id: string; name: string; email: string; passwordHash: string; role: string; tokenVersion: number; }
+const ADMIN_SELECT = `SELECT id, name, email, password_hash AS "passwordHash", role, token_version AS "tokenVersion" FROM admins`;
 export const Admins = {
   findByEmail(email: string) { return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE email = $1`, [email]); },
   findById(id: string) { return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE id = $1`, [id]); },
@@ -32,10 +32,13 @@ export const Admins = {
     if (existing) return existing;
     const rows = await query<AdminRow>(
       `INSERT INTO admins (name, email, password_hash, role) VALUES ($1, $2, $3, $4)
-       RETURNING id, name, email, password_hash AS "passwordHash", role`,
+       RETURNING id, name, email, password_hash AS "passwordHash", role, token_version AS "tokenVersion"`,
       [input.name, input.email, input.passwordHash, input.role || "admin"],
     );
     return rows[0];
+  },
+  async bumpTokenVersion(id: string): Promise<boolean> {
+    return (await execute("UPDATE admins SET token_version = token_version + 1, updated_at = now() WHERE id = $1", [id])) > 0;
   },
 };
 

@@ -12,6 +12,7 @@ export interface AdminTokenPayload {
   sub: string;
   email: string;
   role: string;
+  tokenVersion: number;
 }
 
 export function signAdminToken(payload: AdminTokenPayload): string {

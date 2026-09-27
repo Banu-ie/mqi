@@ -159,6 +159,20 @@ test("a tampered token is rejected", async () => {
   assert.equal(res.status, 401);
 });
 
+test("logout revokes the current token", async () => {
+  const loggedOut = await api("/auth/logout", { method: "POST", token });
+  assert.equal(loggedOut.status, 204);
+  const revoked = await api("/auth/me", { token });
+  assert.equal(revoked.status, 401);
+
+  const loggedIn = await api("/auth/login", {
+    method: "POST",
+    body: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
+  });
+  assert.equal(loggedIn.status, 200);
+  token = (loggedIn.body as { token: string }).token;
+});
+
 test("product create/read/update/delete round-trips", async () => {
   const created = await api("/products", {
     method: "POST",

@@ -26,6 +26,7 @@ export async function login(req: Request, res: Response) {
     sub: admin.id,
     email: admin.email,
     role: admin.role,
+    tokenVersion: admin.tokenVersion,
   });
   return res.json({
     token,
@@ -36,6 +37,10 @@ export async function login(req: Request, res: Response) {
       role: admin.role,
     },
   });
+}
+export async function logout(req: AuthedRequest, res: Response) {
+  await Admins.bumpTokenVersion(req.admin!.sub);
+  return res.status(204).send();
 }
 export async function getMe(req: AuthedRequest, res: Response) {
   const admin = await Admins.findById(req.admin!.sub);

@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAdminToken, AdminTokenPayload } from "../lib/auth";
+import { Admins } from "../db/models";
 
 export interface AuthedRequest extends Request {
   admin?: AdminTokenPayload;
 }
 
-export function requireAuth(
+export async function requireAuth(
   req: AuthedRequest,
   res: Response,
   next: NextFunction
@@ -19,7 +20,12 @@ export function requireAuth(
   const token = header.slice("Bearer ".length);
 
   try {
-    req.admin = verifyAdminToken(token);
+    const payload = verifyAdminToken(token);
+    const admin = await Admins.findById(payload.sub);
+    if (!admin || admin.tokenVersion !== payload.tokenVersion) {
+      return res.status(401).json({ error: "Sessiya ləğv edilib. Yenidən daxil olun." });
+    }
+    req.admin = payload;
     next();
   } catch {
     return res
