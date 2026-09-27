@@ -19,18 +19,19 @@ const isValidDate = (value: string) => {
 };
 
 const eventSchema = z.object({
-  title: z.string().trim().min(1, "Başlıq tələb olunur."),
+  title: z.string().trim().min(1, "Başlıq tələb olunur.").max(200, "Başlıq çox uzundur."),
 
-  date: z.string().refine(isValidDate, "Tarix düzgün deyil."),
+  date: z.string().length(10, "Tarix düzgün deyil.").refine(isValidDate, "Tarix düzgün deyil."),
 
-  location: z.string().trim().min(1, "Məkan tələb olunur."),
+  location: z.string().trim().min(1, "Məkan tələb olunur.").max(300, "Məkan çox uzundur."),
 
-  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur."),
+  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur.").max(2_000, "Qısa təsvir çox uzundur."),
 
-  fullDesc: z.string().default(""),
+  fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
 
   image: z
     .string()
+    .max(2048, "Şəkil ünvanı çox uzundur.")
     .refine(
       (value) =>
         value === "" ||

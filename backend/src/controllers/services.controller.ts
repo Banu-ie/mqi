@@ -4,12 +4,12 @@ import { Services } from "../db/models";
 import { storeUpload } from "../lib/imageStore";
 
 const serviceSchema = z.object({
-  name: z.string().trim().min(1, "Xidmət adı tələb olunur."),
-  description: z.string().trim().min(1, "Qısa təsvir tələb olunur."),
-  fullDesc: z.string().default(""),
-  image: z.string().refine((value) => value === "" || value.startsWith("/uploads/") || /^https?:\/\//i.test(value), "Şəkil düzgün deyil."),
-  forWhom: z.string().default(""),
-  benefits: z.preprocess((value) => typeof value === "string" ? value.split("\n").map((item) => item.trim()).filter(Boolean) : value, z.array(z.string()).default([])),
+  name: z.string().trim().min(1, "Xidmət adı tələb olunur.").max(200, "Xidmət adı çox uzundur."),
+  description: z.string().trim().min(1, "Qısa təsvir tələb olunur.").max(2_000, "Qısa təsvir çox uzundur."),
+  fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
+  image: z.string().max(2048, "Şəkil ünvanı çox uzundur.").refine((value) => value === "" || value.startsWith("/uploads/") || /^https?:\/\//i.test(value), "Şəkil düzgün deyil."),
+  forWhom: z.string().max(1_000, "Auditoriya təsviri çox uzundur.").default(""),
+  benefits: z.preprocess((value) => typeof value === "string" ? value.split("\n").map((item) => item.trim()).filter(Boolean) : value, z.array(z.string().max(500, "Üstünlük çox uzundur.")).max(20, "Çox sayda üstünlük var.").default([])),
   status: z.enum(["active", "inactive"]).default("active"),
 });
 

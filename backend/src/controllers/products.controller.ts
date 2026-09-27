@@ -4,7 +4,7 @@ import { Products, type ProductRow } from "../db/models";
 import { MAX_PRODUCT_IMAGES } from "../middleware/upload";
 import { storeUpload } from "../lib/imageStore";
 
-const imageRef = z.string().refine(
+const imageRef = z.string().max(2048, "Şəkil ünvanı çox uzundur.").refine(
   (value) => value === "" || value.startsWith("/uploads/") || /^https?:\/\//i.test(value),
   "Şəkil düzgün deyil.",
 );
@@ -32,11 +32,11 @@ function parseImageList(value: unknown): unknown {
 }
 
 const productSchema = z.object({
-  name: z.string().trim().min(1, "Məhsul adı tələb olunur."),
-  price: z.coerce.number().finite().nonnegative("Qiymət mənfi ola bilməz."),
-  category: z.string().trim().min(1, "Kateqoriya tələb olunur."),
-  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur."),
-  fullDesc: z.string().default(""),
+  name: z.string().trim().min(1, "Məhsul adı tələb olunur.").max(200, "Məhsul adı çox uzundur."),
+  price: z.coerce.number().finite().nonnegative("Qiymət mənfi ola bilməz.").max(1_000_000, "Qiymət çox yüksəkdir.").multipleOf(0.01, "Qiymət ən çox iki rəqəmli qəpik dəqiqliyində olmalıdır."),
+  category: z.string().trim().min(1, "Kateqoriya tələb olunur.").max(100, "Kateqoriya çox uzundur."),
+  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur.").max(2_000, "Qısa təsvir çox uzundur."),
+  fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
   image: imageRef,
   images: z.preprocess(
     parseImageList,

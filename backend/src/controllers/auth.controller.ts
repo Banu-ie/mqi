@@ -5,8 +5,8 @@ import { Admins } from "../db/models";
 import { signAdminToken } from "../lib/auth";
 import type { AuthedRequest } from "../middleware/requireAuth";
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().email().max(320),
+  password: z.string().min(1).max(1024),
 });
 const DUMMY_PASSWORD_HASH =
   "$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";

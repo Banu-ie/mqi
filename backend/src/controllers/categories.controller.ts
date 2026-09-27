@@ -3,7 +3,7 @@ import { z } from "zod";
 import { withTransaction } from "../db";
 import { Categories, Products } from "../db/models";
 
-const categorySchema = z.object({ name: z.string().trim().min(1, "Kateqoriya adı tələb olunur."), type: z.enum(["product", "service"]) });
+const categorySchema = z.object({ name: z.string().trim().min(1, "Kateqoriya adı tələb olunur.").max(100, "Kateqoriya adı çox uzundur."), type: z.enum(["product", "service"]) });
 
 export async function getCategories(req: Request, res: Response) { const type = req.query.type === "product" || req.query.type === "service" ? req.query.type : undefined; return res.json(await Categories.list(type)); }
 
