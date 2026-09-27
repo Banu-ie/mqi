@@ -1,9 +1,10 @@
 import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { Admins } from "../db/models";
+import { Admins, AdminSessions } from "../db/models";
 import { signAdminToken } from "../lib/auth";
 import type { AuthedRequest } from "../middleware/requireAuth";
+import { randomUUID } from "node:crypto";
 const loginSchema = z.object({
   email: z.string().email().max(320),
   password: z.string().min(1).max(1024),
@@ -25,8 +26,11 @@ export async function login(req: Request, res: Response) {
   if (Number(admin.passwordHash.slice(4, 6)) < 12) {
     await Admins.updatePasswordHash(admin.id, await bcrypt.hash(parsed.data.password, 12));
   }
+  const sessionId = randomUUID();
+  await AdminSessions.create(sessionId, admin.id);
   const token = signAdminToken({
     sub: admin.id,
+    sid: sessionId,
     email: admin.email,
     role: admin.role,
     tokenVersion: admin.tokenVersion,
@@ -42,6 +46,7 @@ export async function login(req: Request, res: Response) {
   });
 }
 export async function logout(req: AuthedRequest, res: Response) {
+  await AdminSessions.revoke(req.admin!.sid);
   await Admins.bumpTokenVersion(req.admin!.sub);
   return res.status(204).send();
 }

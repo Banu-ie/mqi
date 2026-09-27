@@ -66,6 +66,34 @@ export const Admins = {
   },
 };
 
+export const AdminSessions = {
+  async create(id: string, adminId: string): Promise<void> {
+    await execute(
+      `DELETE FROM admin_sessions
+       WHERE admin_id = $1 AND (expires_at <= now() OR last_seen_at <= now() - INTERVAL '15 minutes')`,
+      [adminId],
+    );
+    await execute(
+      `INSERT INTO admin_sessions (id, admin_id, expires_at)
+       VALUES ($1, $2, now() + INTERVAL '12 hours')`,
+      [id, adminId],
+    );
+  },
+  async touchIfActive(id: string, adminId: string): Promise<boolean> {
+    return (
+      (await execute(
+        `UPDATE admin_sessions SET last_seen_at = now()
+         WHERE id = $1 AND admin_id = $2 AND expires_at > now()
+           AND last_seen_at > now() - INTERVAL '15 minutes'`,
+        [id, adminId],
+      )) > 0
+    );
+  },
+  async revoke(id: string): Promise<void> {
+    await execute("DELETE FROM admin_sessions WHERE id = $1", [id]);
+  },
+};
+
 export interface CategoryRow {
   id: string;
   name: string;

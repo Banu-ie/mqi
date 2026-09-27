@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAdminToken, AdminTokenPayload } from "../lib/auth";
-import { Admins } from "../db/models";
+import { Admins, AdminSessions } from "../db/models";
 
 export interface AuthedRequest extends Request {
   admin?: AdminTokenPayload;
@@ -26,6 +26,11 @@ export async function requireAuth(
       return res
         .status(401)
         .json({ error: "Sessiya ləğv edilib. Yenidən daxil olun." });
+    }
+    if (!(await AdminSessions.touchIfActive(payload.sid, payload.sub))) {
+      return res
+        .status(401)
+        .json({ error: "Sessiyanın vaxtı bitib. Yenidən daxil olun." });
     }
     req.admin = payload;
     next();

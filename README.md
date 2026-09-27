@@ -100,6 +100,9 @@ Backend (`backend/.env`; templates in `backend/.env.example` and
 | Variable                                   | Required | Notes                                                                                           |
 | ------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`                             | **yes**  | PostgreSQL connection string. Server exits on boot if unset. Use the _pooled_ endpoint on Neon. |
+| `DATABASE_MIGRATION_URL`                   | no       | Privileged PostgreSQL URL used for migrations when split roles are enabled.                  |
+| `DATABASE_RUNTIME_ROLE`                    | no       | Limited role name paired with `DATABASE_MIGRATION_URL`; enables grants and migration checks.   |
+| `RUN_MIGRATIONS`                            | no       | Defaults to `true`; set `false` only when a privileged release job runs migrations.             |
 | `JWT_SECRET`                               | **yes**  | Server exits on boot if unset. Use ≥48 random bytes.                                            |
 | `DATABASE_SCHEMA`                          | no       | Schema holding this app's tables. Default `mqicma`.                                             |
 | `DATABASE_POOL_MAX`                        | no       | Max pooled connections, default `10`. Keep low on serverless Postgres.                          |
@@ -134,8 +137,81 @@ colliding with anything else already in it.
   and leaves existing rows alone. `SEED_RESET=true npm run seed` replaces the
   demo catalogue. Never run the reset form against production.
 - **Tables**: `admins`, `categories`, `products`, `services`, `events`,
-  `site_content`, `contact_messages`, `uploads`, `rate_limit_hits`, plus indexes
-  on the columns the API filters and sorts on.
+  `site_content`, `contact_messages`, `uploads`, `rate_limit_hits`,
+  `admin_sessions`, plus indexes on the columns the API filters and sorts on.
+
+### Database roles
+
+The simplest local setup uses one database login. Production should use a
+separate, non-owner runtime login so a web-process compromise cannot create
+schemas, alter tables, or access other schemas. Create the runtime login as the
+database owner, grant it `CONNECT` on the database and `USAGE` on the `mqicma`
+schema, and set its default path:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS mqicma;
+CREATE ROLE mqicma_app LOGIN PASSWORD 'use-a-generated-secret';
+GRANT CONNECT ON DATABASE your_database TO mqicma_app;
+GRANT USAGE ON SCHEMA mqicma TO mqicma_app;
+ALTER ROLE mqicma_app SET search_path TO mqicma;
+```
+
+Set `DATABASE_URL` to the pooled connection for `mqicma_app`,
+`DATABASE_RUNTIME_ROLE=mqicma_app`, and `DATABASE_MIGRATION_URL` to the schema
+owner connection. The migration runner grants the runtime role CRUD rights only
+inside this application's schema, excludes `schema_migrations`, and sets
+matching default grants for future tables. Keep the owner URL in a migration
+job or release environment, not the long-running web service, where the host
+supports that split. Never grant the app login database-level `CREATE`, schema
+ownership, or superuser privileges. This site is single-tenant: its content is
+shared, and row-level access decisions remain at the authenticated API layer;
+PostgreSQL RLS cannot distinguish admins when every request uses the same DB
+login.
+
+For a strict split, run `npm run migrate:prod` from a release job with both
+database URLs, then set `RUN_MIGRATIONS=false` on the web service and omit
+`DATABASE_MIGRATION_URL` there. The runtime role must already have the schema
+and default `search_path` provisioned as above. The default `RUN_MIGRATIONS=true`
+keeps the single-login development setup convenient.
+
+### Backups, recovery targets, and restore procedure
+
+Backup retention and point-in-time recovery are controlled by the database
+provider and plan; this repository cannot verify that they are enabled. In the
+Neon project console, enable the longest backup/PITR retention available for the
+chosen plan, confirm the database is covered, and make sure provider alerts go
+to an actively monitored address. Recovery objectives for this service are
+**RPO ≤ 24 hours** and **RTO ≤ 4 hours**. Confirm the selected plan can meet
+those targets; if it cannot, record the actual achievable targets and get the
+service owner to accept them.
+
+Restore runbook:
+
+1. Record the incident time and select the latest known-good recovery point
+   before the incident. Do not overwrite or delete the original database.
+2. Restore to a new database/branch using the provider console. Keep the
+   original available while recovery is validated.
+3. Point a staging deployment at the restored database. Check startup/migrations,
+   `/api/health`, admin login, catalogue pages, contact messages, and uploaded
+   images.
+4. Once checks pass, update production `DATABASE_URL` to the restored database,
+   redeploy, and repeat the smoke checks. Record the recovery point and elapsed
+   time to measure RPO/RTO.
+5. Schedule a restore drill at least quarterly and after changing backup
+   settings. Record the date, result, measured data loss window, and recovery
+   time in the operations log.
+
+### Usage and quota alerts
+
+The scheduled keep-warm workflow is only a best-effort availability measure;
+GitHub cron delivery is not guaranteed and it does not control provider spend.
+In the Render and Neon project consoles, add billing/usage notifications at
+**50%, 90%, and 100%** of each applicable monthly resource quota or spend
+budget. Send them to at least two monitored maintainers. Include database
+compute, storage, egress, and web-service usage where the provider exposes
+those meters. Verify the alert recipients and thresholds quarterly. The
+repository cannot confirm console-side alert delivery, so track that check in
+the provider account.
 - Products reference their category **by name**, not by id. Category renames
   cascade to products in a transaction, and deleting a category that still holds
   products is rejected with `409`.
@@ -178,7 +254,9 @@ Rate limits live in PostgreSQL and are shared across restarts and instances:
 300 requests / 15 min across `/api`, 10 failed logins / 15 min per IP and 5 per
 account on `/api/auth/login`, and 5 submissions / hour on `POST /api/contact`.
 Admin tokens live in the current browser tab and expire after 15 minutes without
-activity (or at the 12-hour JWT expiry).
+activity on both the client and API (with a 12-hour absolute limit). The API
+tracks each login session in PostgreSQL, so a copied token also stops working
+after the idle window.
 
 ## Tests
 

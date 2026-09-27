@@ -10,6 +10,7 @@ if (!JWT_SECRET) {
 
 export interface AdminTokenPayload {
   sub: string;
+  sid: string;
   email: string;
   role: string;
   tokenVersion: number;
@@ -20,5 +21,7 @@ export function signAdminToken(payload: AdminTokenPayload): string {
 }
 
 export function verifyAdminToken(token: string): AdminTokenPayload {
-  return jwt.verify(token, JWT_SECRET as string) as AdminTokenPayload;
+  const payload = jwt.verify(token, JWT_SECRET as string) as AdminTokenPayload;
+  if (typeof payload.sid !== "string") throw new Error("Token has no session id.");
+  return payload;
 }

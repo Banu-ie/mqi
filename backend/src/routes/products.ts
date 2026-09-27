@@ -7,7 +7,7 @@ import {
   updateProduct,
 } from "../controllers/products.controller";
 import { requireAuth } from "../middleware/requireAuth";
-import { productImageUpload } from "../middleware/upload";
+import { productImageUpload, verifyImageContent } from "../middleware/upload";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
 export const productsRouter = Router();
@@ -22,6 +22,7 @@ productsRouter.post(
   "/",
   requireAuth,
   productImageUpload,
+  verifyImageContent,
   asyncHandler(createProduct),
 );
 productsRouter.put(
@@ -29,6 +30,7 @@ productsRouter.put(
   validateUuidParam,
   requireAuth,
   productImageUpload,
+  verifyImageContent,
   asyncHandler(updateProduct),
 );
 productsRouter.delete(

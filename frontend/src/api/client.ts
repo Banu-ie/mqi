@@ -50,6 +50,7 @@ export const clearToken = () => {
 };
 
 export function recordAdminActivity() {
+  if (!getToken()) return;
   const now = Date.now();
   const previous = Number(sessionStorage.getItem(ACTIVITY_KEY));
   if (sessionStorage.getItem(TOKEN_KEY) && now - previous >= 60_000) {

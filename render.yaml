@@ -33,6 +33,10 @@ services:
         value: "production"
       - key: DATABASE_URL
         sync: false # Neon pooled connection string (a secret)
+      - key: DATABASE_MIGRATION_URL
+        sync: false # Optional owner connection for migrations only
+      - key: DATABASE_RUNTIME_ROLE
+        sync: false # Optional name of the limited role used by DATABASE_URL
       - key: DATABASE_SCHEMA
         value: mqicma
       - key: DATABASE_POOL_MAX

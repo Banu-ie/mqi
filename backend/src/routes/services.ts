@@ -7,7 +7,7 @@ import {
   updateService,
 } from "../controllers/services.controller";
 import { requireAuth } from "../middleware/requireAuth";
-import { serviceImageUpload } from "../middleware/upload";
+import { serviceImageUpload, verifyImageContent } from "../middleware/upload";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
 export const servicesRouter = Router();
@@ -22,6 +22,7 @@ servicesRouter.post(
   "/",
   requireAuth,
   serviceImageUpload,
+  verifyImageContent,
   asyncHandler(createService),
 );
 servicesRouter.put(
@@ -29,6 +30,7 @@ servicesRouter.put(
   validateUuidParam,
   requireAuth,
   serviceImageUpload,
+  verifyImageContent,
   asyncHandler(updateService),
 );
 servicesRouter.delete(

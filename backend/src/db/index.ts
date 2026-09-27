@@ -14,6 +14,25 @@ if (!connectionString) {
     "DATABASE_URL is not set. Copy backend/.env.example to backend/.env and set a PostgreSQL connection string.",
   );
 }
+const migrationConnectionString = process.env.DATABASE_MIGRATION_URL;
+const runtimeRole = process.env.DATABASE_RUNTIME_ROLE;
+if (migrationConnectionString && !runtimeRole) {
+  throw new Error(
+    "DATABASE_MIGRATION_URL requires DATABASE_RUNTIME_ROLE so migration grants can be scoped to the app login.",
+  );
+}
+if (
+  runtimeRole &&
+  !migrationConnectionString &&
+  process.env.RUN_MIGRATIONS !== "false"
+) {
+  throw new Error(
+    "A split runtime role requires DATABASE_MIGRATION_URL at startup, or set RUN_MIGRATIONS=false and run migrations in a privileged release job.",
+  );
+}
+if (runtimeRole && !/^[a-z_][a-z0-9_]*$/i.test(runtimeRole)) {
+  throw new Error("DATABASE_RUNTIME_ROLE must be a plain SQL identifier.");
+}
 
 // This application keeps its tables in a dedicated schema rather than `public`,
 // so it can share a database without colliding with anything already there.
@@ -31,6 +50,14 @@ export const pool = new Pool({
   connectionTimeoutMillis: 20_000,
   idleTimeoutMillis: 30_000,
 });
+const migrationPool = migrationConnectionString
+  ? new Pool({
+      connectionString: migrationConnectionString,
+      max: 2,
+      connectionTimeoutMillis: 20_000,
+      idleTimeoutMillis: 30_000,
+    })
+  : pool;
 
 // How unqualified table names get resolved to SCHEMA is subtler than it looks,
 // and two tempting approaches are both wrong here:
@@ -49,6 +76,11 @@ export const pool = new Pool({
 pool.on("error", (error) => {
   logger.error(error, "Unexpected PostgreSQL pool error");
 });
+if (migrationPool !== pool) {
+  migrationPool.on("error", (error) => {
+    logger.error(error, "Unexpected PostgreSQL migration pool error");
+  });
+}
 
 export async function query<T extends object>(
   sql: string,
@@ -104,30 +136,38 @@ const MIGRATIONS_DIR = path.join(__dirname, "migrations");
  * lock keeps two booting instances from racing each other.
  */
 export async function runMigrations(): Promise<string[]> {
-  const client = await pool.connect();
+  if (runtimeRole && migrationPool === pool) {
+    throw new Error("Migrations need DATABASE_MIGRATION_URL when using a split runtime role.");
+  }
+  const client = await migrationPool.connect();
   const applied: string[] = [];
   try {
     await client.query(`CREATE SCHEMA IF NOT EXISTS "${SCHEMA}"`);
     await client.query(`SET search_path TO "${SCHEMA}"`);
 
-    // Make the schema the default for this role. A session-level `SET` alone is
+    // In single-role mode, make the schema the default for the current role.
+    // In split-role mode, DATABASE_RUNTIME_ROLE must have its default search
+    // path set by the database owner as documented in README.md.
+    // A session-level `SET` alone is
     // not enough behind a transaction pooler, which reuses server connections
     // between transactions and resets them — discarding the setting. A role
     // default survives that, because a reset restores it rather than clearing
     // it. Not fatal if the role may not alter itself; assertSchemaResolution()
     // then fails at boot with a clearer message than a wrong-table read.
-    try {
-      await client.query(
-        `ALTER ROLE CURRENT_USER SET search_path TO "${SCHEMA}"`,
-      );
-    } catch (error) {
-      logger.warn(
-        "Could not set the default search_path for the current role",
-        { code: (error as { code?: string }).code },
-      );
-      logger.warn(
-        `Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`,
-      );
+    if (!runtimeRole) {
+      try {
+        await client.query(
+          `ALTER ROLE CURRENT_USER SET search_path TO "${SCHEMA}"`,
+        );
+      } catch (error) {
+        logger.warn(
+          "Could not set the default search_path for the current role",
+          { code: (error as { code?: string }).code },
+        );
+        logger.warn(
+          `Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`,
+        );
+      }
     }
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -174,6 +214,20 @@ export async function runMigrations(): Promise<string[]> {
     } finally {
       await client.query("SELECT pg_advisory_unlock(4242)");
     }
+
+    if (runtimeRole) {
+      const role = `"${runtimeRole}"`;
+      await client.query(`GRANT USAGE ON SCHEMA "${SCHEMA}" TO ${role}`);
+      await client.query(
+        `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${SCHEMA}" TO ${role}`,
+      );
+      await client.query(
+        `REVOKE ALL ON TABLE "${SCHEMA}".schema_migrations FROM ${role}`,
+      );
+      await client.query(
+        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${SCHEMA}" GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${role}`,
+      );
+    }
   } finally {
     client.release();
   }
@@ -187,10 +241,16 @@ export async function runMigrations(): Promise<string[]> {
  * whichever same-named tables happen to sit in `public`.
  */
 export async function assertSchemaResolution(): Promise<void> {
-  const { rows } = await pool.query<{ schema: string | null }>(
-    "SELECT current_schema() AS schema",
+  const { rows } = await pool.query<{ schema: string | null; role: string }>(
+    "SELECT current_schema() AS schema, current_user AS role",
   );
   const actual = rows[0]?.schema ?? null;
+  const actualRole = rows[0]?.role;
+  if (runtimeRole && actualRole !== runtimeRole) {
+    throw new Error(
+      `DATABASE_URL connected as ${JSON.stringify(actualRole)}, expected the limited role ${JSON.stringify(runtimeRole)}.`,
+    );
+  }
   if (actual !== SCHEMA) {
     throw new Error(
       `Unqualified table names resolve to ${JSON.stringify(actual)}, expected ${JSON.stringify(SCHEMA)}. ` +
@@ -201,4 +261,5 @@ export async function assertSchemaResolution(): Promise<void> {
 
 export async function closeDb(): Promise<void> {
   await pool.end();
+  if (migrationPool !== pool) await migrationPool.end();
 }

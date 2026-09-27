@@ -224,7 +224,7 @@ export { app };
 if (require.main === module) {
   // Migrations run once at startup, before the port opens, so the process
   // never serves traffic against a schema that is not ready yet.
-  runMigrations()
+  (process.env.RUN_MIGRATIONS === "false" ? Promise.resolve([]) : runMigrations())
     // Migrations create the schema, so this can only be checked afterwards.
     .then(async (applied) => {
       await assertSchemaResolution();

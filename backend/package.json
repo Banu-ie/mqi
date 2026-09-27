@@ -11,6 +11,7 @@
     "build:all": "npm run build && npm run build:web",
     "start": "node dist/index.js",
     "migrate": "tsx src/db/migrate.ts",
+    "migrate:prod": "node dist/db/migrate.js",
     "seed": "tsx src/db/seed.ts",
     "seed:prod": "node dist/db/seed.js",
     "test": "tsx --test \"src/**/*.test.ts\""

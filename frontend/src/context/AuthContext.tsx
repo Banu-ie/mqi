@@ -18,8 +18,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const activityEvents = ["pointerdown", "keydown", "touchstart", "mousemove"] as const;
     activityEvents.forEach((event) => window.addEventListener(event, recordAdminActivity, { passive: true }));
     const timer = window.setInterval(() => {
-      if (!getToken()) setAdmin(null);
-    }, 30_000);
+      if (!getToken()) {
+        setAdmin(null);
+        return;
+      }
+      authApi.me().catch(() => {
+        clearToken();
+        setAdmin(null);
+      });
+    }, 5 * 60_000);
     return () => {
       activityEvents.forEach((event) => window.removeEventListener(event, recordAdminActivity));
       window.clearInterval(timer);

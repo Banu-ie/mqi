@@ -1,5 +1,7 @@
 import path from "node:path";
 import multer from "multer";
+import sharp from "sharp";
+import type { RequestHandler } from "express";
 
 const allowedTypes = new Map<string, string[]>([
   ["image/jpeg", [".jpg", ".jpeg"]],
@@ -21,6 +23,36 @@ const fileFilter: multer.Options["fileFilter"] = (_req, file, callback) => {
     return callback(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "image"));
   }
   callback(null, true);
+};
+
+const mimeByFormat: Record<string, string> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+};
+
+/** Validate bytes after multer has buffered the files; MIME and names are untrusted. */
+export const verifyImageContent: RequestHandler = (req, _res, next) => {
+  const files = req.file
+    ? [req.file]
+    : req.files && !Array.isArray(req.files)
+      ? Object.values(req.files).flat()
+      : [];
+
+  void Promise.all(
+    files.map(async (file) => {
+      try {
+        const { format } = await sharp(file.buffer, { animated: true }).metadata();
+        if (format && mimeByFormat[format] === file.mimetype && isAllowedImageFile(file)) return;
+      } catch {
+        // Treat decoder errors the same as a mismatched magic signature.
+      }
+      const error = new Error("Uploaded bytes do not match an allowed image type.");
+      (error as Error & { status: number }).status = 400;
+      throw error;
+    }),
+  ).then(() => next(), next);
 };
 
 /**

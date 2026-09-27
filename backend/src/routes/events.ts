@@ -7,7 +7,7 @@ import {
   updateEvent,
 } from "../controllers/events.controller";
 import { requireAuth } from "../middleware/requireAuth";
-import { eventImageUpload } from "../middleware/upload";
+import { eventImageUpload, verifyImageContent } from "../middleware/upload";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { validateUuidParam } from "../middleware/validateUuidParam";
 export const eventsRouter = Router();
@@ -17,6 +17,7 @@ eventsRouter.post(
   "/",
   requireAuth,
   eventImageUpload,
+  verifyImageContent,
   asyncHandler(createEvent),
 );
 eventsRouter.put(
@@ -24,6 +25,7 @@ eventsRouter.put(
   validateUuidParam,
   requireAuth,
   eventImageUpload,
+  verifyImageContent,
   asyncHandler(updateEvent),
 );
 eventsRouter.delete(
