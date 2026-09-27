@@ -47,10 +47,7 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         "img-src": ["'self'", "data:", "https://images.unsplash.com"],
-        "style-src": [
-          "'self'",
-          "https://fonts.googleapis.com",
-        ],
+        "style-src": ["'self'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
         "connect-src": ["'self'"],
       },
@@ -187,12 +184,10 @@ app.use(
     // Anything else is genuinely unexpected: log it server-side, and never leak
     // the message or stack to the client.
     logger.error(err, "Unhandled request error", { requestId: _req.requestId });
-    res
-      .status(500)
-      .json({
-        error: "Serverdə xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.",
-        reference: _req.requestId,
-      });
+    res.status(500).json({
+      error: "Serverdə xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.",
+      reference: _req.requestId,
+    });
   },
 );
 

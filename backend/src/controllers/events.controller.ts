@@ -19,13 +19,28 @@ const isValidDate = (value: string) => {
 };
 
 const eventSchema = z.object({
-  title: z.string().trim().min(1, "Başlıq tələb olunur.").max(200, "Başlıq çox uzundur."),
+  title: z
+    .string()
+    .trim()
+    .min(1, "Başlıq tələb olunur.")
+    .max(200, "Başlıq çox uzundur."),
 
-  date: z.string().length(10, "Tarix düzgün deyil.").refine(isValidDate, "Tarix düzgün deyil."),
+  date: z
+    .string()
+    .length(10, "Tarix düzgün deyil.")
+    .refine(isValidDate, "Tarix düzgün deyil."),
 
-  location: z.string().trim().min(1, "Məkan tələb olunur.").max(300, "Məkan çox uzundur."),
+  location: z
+    .string()
+    .trim()
+    .min(1, "Məkan tələb olunur.")
+    .max(300, "Məkan çox uzundur."),
 
-  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur.").max(2_000, "Qısa təsvir çox uzundur."),
+  shortDesc: z
+    .string()
+    .trim()
+    .min(1, "Qısa təsvir tələb olunur.")
+    .max(2_000, "Qısa təsvir çox uzundur."),
 
   fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
 
@@ -69,7 +84,10 @@ export async function getEventById(req: Request, res: Response) {
   return res.json(event);
 }
 export async function createEvent(req: Request, res: Response) {
-  const parsed = eventSchema.safeParse({ ...req.body, image: await imageValue(req) });
+  const parsed = eventSchema.safeParse({
+    ...req.body,
+    image: await imageValue(req),
+  });
   if (!parsed.success)
     return res
       .status(400)
@@ -78,12 +96,10 @@ export async function createEvent(req: Request, res: Response) {
 }
 export async function updateEvent(req: Request, res: Response) {
   const uploaded = req.file ? await imageValue(req) : undefined;
-  const parsed = eventSchema
-    .partial()
-    .safeParse({
-      ...req.body,
-      ...(uploaded !== undefined ? { image: uploaded } : {}),
-    });
+  const parsed = eventSchema.partial().safeParse({
+    ...req.body,
+    ...(uploaded !== undefined ? { image: uploaded } : {}),
+  });
   if (!parsed.success)
     return res
       .status(400)

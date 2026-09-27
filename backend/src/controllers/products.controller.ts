@@ -4,10 +4,16 @@ import { Products, type ProductRow } from "../db/models";
 import { MAX_PRODUCT_IMAGES } from "../middleware/upload";
 import { storeUpload } from "../lib/imageStore";
 
-const imageRef = z.string().max(2048, "Şəkil ünvanı çox uzundur.").refine(
-  (value) => value === "" || value.startsWith("/uploads/") || /^https?:\/\//i.test(value),
-  "Şəkil düzgün deyil.",
-);
+const imageRef = z
+  .string()
+  .max(2048, "Şəkil ünvanı çox uzundur.")
+  .refine(
+    (value) =>
+      value === "" ||
+      value.startsWith("/uploads/") ||
+      /^https?:\/\//i.test(value),
+    "Şəkil düzgün deyil.",
+  );
 
 /**
  * A gallery arrives as a form field, so it can reach us three ways: a JSON
@@ -32,15 +38,41 @@ function parseImageList(value: unknown): unknown {
 }
 
 const productSchema = z.object({
-  name: z.string().trim().min(1, "Məhsul adı tələb olunur.").max(200, "Məhsul adı çox uzundur."),
-  price: z.coerce.number().finite().nonnegative("Qiymət mənfi ola bilməz.").max(1_000_000, "Qiymət çox yüksəkdir.").multipleOf(0.01, "Qiymət ən çox iki rəqəmli qəpik dəqiqliyində olmalıdır."),
-  category: z.string().trim().min(1, "Kateqoriya tələb olunur.").max(100, "Kateqoriya çox uzundur."),
-  shortDesc: z.string().trim().min(1, "Qısa təsvir tələb olunur.").max(2_000, "Qısa təsvir çox uzundur."),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Məhsul adı tələb olunur.")
+    .max(200, "Məhsul adı çox uzundur."),
+  price: z.coerce
+    .number()
+    .finite()
+    .nonnegative("Qiymət mənfi ola bilməz.")
+    .max(1_000_000, "Qiymət çox yüksəkdir.")
+    .multipleOf(
+      0.01,
+      "Qiymət ən çox iki rəqəmli qəpik dəqiqliyində olmalıdır.",
+    ),
+  category: z
+    .string()
+    .trim()
+    .min(1, "Kateqoriya tələb olunur.")
+    .max(100, "Kateqoriya çox uzundur."),
+  shortDesc: z
+    .string()
+    .trim()
+    .min(1, "Qısa təsvir tələb olunur.")
+    .max(2_000, "Qısa təsvir çox uzundur."),
   fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
   image: imageRef,
   images: z.preprocess(
     parseImageList,
-    z.array(imageRef).max(MAX_PRODUCT_IMAGES, `Ən çox ${MAX_PRODUCT_IMAGES} şəkil əlavə edilə bilər.`).default([]),
+    z
+      .array(imageRef)
+      .max(
+        MAX_PRODUCT_IMAGES,
+        `Ən çox ${MAX_PRODUCT_IMAGES} şəkil əlavə edilə bilər.`,
+      )
+      .default([]),
   ),
   status: z.enum(["active", "inactive"]).default("active"),
 });
@@ -62,11 +94,14 @@ function filesFor(req: Request, field: string): Express.Multer.File[] {
  * appended after them. The cover is simply the first entry, so `image` never
  * drifts from the gallery it belongs to.
  */
-async function resolveGallery(req: Request): Promise<{ images: string[]; image: string } | undefined> {
+async function resolveGallery(
+  req: Request,
+): Promise<{ images: string[]; image: string } | undefined> {
   const coverFiles = filesFor(req, "image");
   const galleryFiles = filesFor(req, "images");
   const listed = parseImageList(req.body?.images);
-  const bodyCover = typeof req.body?.image === "string" ? req.body.image.trim() : undefined;
+  const bodyCover =
+    typeof req.body?.image === "string" ? req.body.image.trim() : undefined;
 
   const saysNothing =
     listed === undefined &&
@@ -81,7 +116,9 @@ async function resolveGallery(req: Request): Promise<{ images: string[]; image: 
   const uploadedCover = await Promise.all(coverFiles.map(store));
   const uploadedGallery = await Promise.all(galleryFiles.map(store));
 
-  const kept = Array.isArray(listed) ? listed.filter((v): v is string => typeof v === "string") : [];
+  const kept = Array.isArray(listed)
+    ? listed.filter((v): v is string => typeof v === "string")
+    : [];
 
   // A file uploaded under the legacy single `image` field is meant as the
   // cover, so it leads.
@@ -103,7 +140,8 @@ function serialize<T extends ProductRow>(product: T | null | undefined) {
   let gallery: string[] = [];
   try {
     const parsed: unknown = JSON.parse(product.images);
-    if (Array.isArray(parsed)) gallery = parsed.filter((v): v is string => typeof v === "string");
+    if (Array.isArray(parsed))
+      gallery = parsed.filter((v): v is string => typeof v === "string");
   } catch {
     gallery = [];
   }
@@ -114,7 +152,9 @@ function serialize<T extends ProductRow>(product: T | null | undefined) {
 }
 
 export async function getProducts(req: Request, res: Response) {
-  return res.json((await Products.list(req.query.all === "true")).map(serialize));
+  return res.json(
+    (await Products.list(req.query.all === "true")).map(serialize),
+  );
 }
 export async function getProductById(req: Request, res: Response) {
   const product = serialize(await Products.get(req.params.id));
@@ -124,7 +164,10 @@ export async function getProductById(req: Request, res: Response) {
 export async function createProduct(req: Request, res: Response) {
   const gallery = (await resolveGallery(req)) ?? { images: [], image: "" };
   const parsed = productSchema.safeParse({ ...req.body, ...gallery });
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  if (!parsed.success)
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   return res.status(201).json(serialize(await Products.create(parsed.data)));
 }
 export async function updateProduct(req: Request, res: Response) {
@@ -132,13 +175,19 @@ export async function updateProduct(req: Request, res: Response) {
   const patch: Record<string, unknown> = { ...req.body };
   delete patch.image;
   delete patch.images;
-  const parsed = productSchema.partial().safeParse({ ...patch, ...(gallery ?? {}) });
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  const parsed = productSchema
+    .partial()
+    .safeParse({ ...patch, ...(gallery ?? {}) });
+  if (!parsed.success)
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   const product = serialize(await Products.update(req.params.id, parsed.data));
   if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
   return res.json(product);
 }
 export async function deleteProduct(req: Request, res: Response) {
-  if (!(await Products.remove(req.params.id))) return res.status(404).json({ error: "Məhsul tapılmadı." });
+  if (!(await Products.remove(req.params.id)))
+    return res.status(404).json({ error: "Məhsul tapılmadı." });
   return res.status(204).send();
 }

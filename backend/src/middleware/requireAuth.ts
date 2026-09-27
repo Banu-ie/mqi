@@ -9,7 +9,7 @@ export interface AuthedRequest extends Request {
 export async function requireAuth(
   req: AuthedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   const header = req.headers.authorization;
 
@@ -23,7 +23,9 @@ export async function requireAuth(
     const payload = verifyAdminToken(token);
     const admin = await Admins.findById(payload.sub);
     if (!admin || admin.tokenVersion !== payload.tokenVersion) {
-      return res.status(401).json({ error: "Sessiya ləğv edilib. Yenidən daxil olun." });
+      return res
+        .status(401)
+        .json({ error: "Sessiya ləğv edilib. Yenidən daxil olun." });
     }
     req.admin = payload;
     next();

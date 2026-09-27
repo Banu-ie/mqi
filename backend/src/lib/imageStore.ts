@@ -41,7 +41,9 @@ async function encode(
   file: Pick<Express.Multer.File, "buffer" | "mimetype">,
 ): Promise<{ mime: string; bytes: Buffer }> {
   try {
-    const bytes = await sharp(file.buffer, { animated: file.mimetype === "image/gif" })
+    const bytes = await sharp(file.buffer, {
+      animated: file.mimetype === "image/gif",
+    })
       // Applies the EXIF orientation and then drops it, so a photo taken in
       // portrait is stored upright rather than leaving the viewer to rotate it.
       .rotate()
@@ -55,7 +57,9 @@ async function encode(
       .toBuffer();
     return { mime: "image/webp", bytes };
   } catch (error) {
-    logger.warn("Could not re-encode an upload, storing it as sent", { name: (error as Error).name });
+    logger.warn("Could not re-encode an upload, storing it as sent", {
+      name: (error as Error).name,
+    });
     return { mime: file.mimetype, bytes: file.buffer };
   }
 }

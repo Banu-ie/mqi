@@ -19,7 +19,9 @@ if (!connectionString) {
 // so it can share a database without colliding with anything already there.
 const rawSchema = process.env.DATABASE_SCHEMA || "mqicma";
 if (!/^[a-z_][a-z0-9_]*$/i.test(rawSchema)) {
-  throw new Error(`DATABASE_SCHEMA must be a plain identifier, got "${rawSchema}".`);
+  throw new Error(
+    `DATABASE_SCHEMA must be a plain identifier, got "${rawSchema}".`,
+  );
 }
 export const SCHEMA = rawSchema;
 
@@ -48,7 +50,10 @@ pool.on("error", (error) => {
   logger.error(error, "Unexpected PostgreSQL pool error");
 });
 
-export async function query<T extends object>(sql: string, params: unknown[] = []): Promise<T[]> {
+export async function query<T extends object>(
+  sql: string,
+  params: unknown[] = [],
+): Promise<T[]> {
   const result = await pool.query(sql, params);
   return result.rows as T[];
 }
@@ -62,7 +67,10 @@ export async function queryOne<T extends object>(
 }
 
 /** Runs `sql` and reports how many rows it affected. */
-export async function execute(sql: string, params: unknown[] = []): Promise<number> {
+export async function execute(
+  sql: string,
+  params: unknown[] = [],
+): Promise<number> {
   const result = await pool.query(sql, params);
   return result.rowCount ?? 0;
 }
@@ -71,7 +79,9 @@ export async function execute(sql: string, params: unknown[] = []): Promise<numb
  * Runs `fn` inside a transaction on a single dedicated connection. Commits on
  * success, rolls back on any thrown error.
  */
-export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -107,10 +117,17 @@ export async function runMigrations(): Promise<string[]> {
     // it. Not fatal if the role may not alter itself; assertSchemaResolution()
     // then fails at boot with a clearer message than a wrong-table read.
     try {
-      await client.query(`ALTER ROLE CURRENT_USER SET search_path TO "${SCHEMA}"`);
+      await client.query(
+        `ALTER ROLE CURRENT_USER SET search_path TO "${SCHEMA}"`,
+      );
     } catch (error) {
-      logger.warn("Could not set the default search_path for the current role", { code: (error as { code?: string }).code });
-      logger.warn(`Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`);
+      logger.warn(
+        "Could not set the default search_path for the current role",
+        { code: (error as { code?: string }).code },
+      );
+      logger.warn(
+        `Run once as a privileged user: ALTER ROLE <role> SET search_path TO "${SCHEMA}";`,
+      );
     }
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -123,9 +140,11 @@ export async function runMigrations(): Promise<string[]> {
     await client.query("SELECT pg_advisory_lock(4242)");
     try {
       const done = new Set(
-        (await client.query<{ name: string }>("SELECT name FROM schema_migrations")).rows.map(
-          (r) => r.name,
-        ),
+        (
+          await client.query<{ name: string }>(
+            "SELECT name FROM schema_migrations",
+          )
+        ).rows.map((r) => r.name),
       );
 
       const files = fs
@@ -139,12 +158,17 @@ export async function runMigrations(): Promise<string[]> {
         await client.query("BEGIN");
         try {
           await client.query(sql);
-          await client.query("INSERT INTO schema_migrations (name) VALUES ($1)", [file]);
+          await client.query(
+            "INSERT INTO schema_migrations (name) VALUES ($1)",
+            [file],
+          );
           await client.query("COMMIT");
           applied.push(file);
         } catch (error) {
           await client.query("ROLLBACK");
-          throw new Error(`Migration ${file} failed: ${(error as Error).message}`);
+          throw new Error(
+            `Migration ${file} failed: ${(error as Error).message}`,
+          );
         }
       }
     } finally {
@@ -163,7 +187,9 @@ export async function runMigrations(): Promise<string[]> {
  * whichever same-named tables happen to sit in `public`.
  */
 export async function assertSchemaResolution(): Promise<void> {
-  const { rows } = await pool.query<{ schema: string | null }>("SELECT current_schema() AS schema");
+  const { rows } = await pool.query<{ schema: string | null }>(
+    "SELECT current_schema() AS schema",
+  );
   const actual = rows[0]?.schema ?? null;
   if (actual !== SCHEMA) {
     throw new Error(

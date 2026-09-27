@@ -105,7 +105,9 @@ test("public list endpoints return arrays on an empty database", async () => {
 test("swagger spec documents every mounted route", async () => {
   const res = await api("/docs.json");
   assert.equal(res.status, 200);
-  const paths = Object.keys((res.body as { paths: Record<string, unknown> }).paths);
+  const paths = Object.keys(
+    (res.body as { paths: Record<string, unknown> }).paths,
+  );
   for (const expected of [
     "/auth/login",
     "/auth/me",
@@ -200,7 +202,10 @@ test("product create/read/update/delete round-trips", async () => {
   assert.equal(updated.status, 200);
   assert.equal((updated.body as { name: string }).name, "Yenilənmiş məhsul");
 
-  const removed = await api(`/products/${product.id}`, { method: "DELETE", token });
+  const removed = await api(`/products/${product.id}`, {
+    method: "DELETE",
+    token,
+  });
   assert.equal(removed.status, 204);
 
   const gone = await api(`/products/${product.id}`);
@@ -224,7 +229,11 @@ test("a product keeps an ordered gallery and a cover that follows it", async () 
     },
   });
   assert.equal(created.status, 201);
-  const product = created.body as { id: string; image: string; images: string[] };
+  const product = created.body as {
+    id: string;
+    image: string;
+    images: string[];
+  };
   assert.deepEqual(product.images, [first, second, third]);
   // The cover is not a separate thing to keep in sync — it is the first entry.
   assert.equal(product.image, first);
@@ -236,7 +245,10 @@ test("a product keeps an ordered gallery and a cover that follows it", async () 
     body: { images: [third, first] },
   });
   assert.equal(reordered.status, 200);
-  assert.deepEqual((reordered.body as { images: string[] }).images, [third, first]);
+  assert.deepEqual((reordered.body as { images: string[] }).images, [
+    third,
+    first,
+  ]);
   assert.equal((reordered.body as { image: string }).image, third);
 
   // An update that says nothing about images must leave the gallery alone.
@@ -246,7 +258,10 @@ test("a product keeps an ordered gallery and a cover that follows it", async () 
     body: { name: "Adı dəyişdi" },
   });
   assert.equal(renamed.status, 200);
-  assert.deepEqual((renamed.body as { images: string[] }).images, [third, first]);
+  assert.deepEqual((renamed.body as { images: string[] }).images, [
+    third,
+    first,
+  ]);
 
   await api(`/products/${product.id}`, { method: "DELETE", token });
 });
@@ -265,7 +280,11 @@ test("a single-image product still reads back as a one-entry gallery", async () 
     },
   });
   assert.equal(created.status, 201);
-  const product = created.body as { id: string; image: string; images: string[] };
+  const product = created.body as {
+    id: string;
+    image: string;
+    images: string[];
+  };
   assert.equal(product.image, only);
   assert.deepEqual(product.images, [only]);
 
@@ -273,7 +292,10 @@ test("a single-image product still reads back as a one-entry gallery", async () 
 });
 
 test("a gallery beyond the cap is rejected with 400", async () => {
-  const tooMany = Array.from({ length: 11 }, (_, i) => `https://example.com/${i}.jpg`);
+  const tooMany = Array.from(
+    { length: 11 },
+    (_, i) => `https://example.com/${i}.jpg`,
+  );
   const res = await api("/products", {
     method: "POST",
     token,
@@ -357,8 +379,12 @@ test("contact messages are public to submit and private to read", async () => {
   assert.equal(authorized.status, 200);
   assert.equal((authorized.body as { items: unknown[] }).items.length, 1);
 
-  const contactId = ((authorized.body as { items: { id: string }[] }).items[0]).id;
-  const deleted = await api(`/contact/${contactId}`, { method: "DELETE", token });
+  const contactId = (authorized.body as { items: { id: string }[] }).items[0]
+    .id;
+  const deleted = await api(`/contact/${contactId}`, {
+    method: "DELETE",
+    token,
+  });
   assert.equal(deleted.status, 204);
   const afterDelete = await api("/contact", { token });
   assert.equal((afterDelete.body as { total: number }).total, 0);
@@ -396,8 +422,13 @@ test("?all=true does not leak unpublished drafts to anonymous callers", async ()
   // Public list must hide it.
   const publicList = await api("/products");
   assert.equal(publicList.status, 200);
-  const publicNames = (publicList.body as { name: string }[]).map((p) => p.name);
-  assert.ok(!publicNames.includes("Gizli qaralama"), "draft leaked into the public list");
+  const publicNames = (publicList.body as { name: string }[]).map(
+    (p) => p.name,
+  );
+  assert.ok(
+    !publicNames.includes("Gizli qaralama"),
+    "draft leaked into the public list",
+  );
 
   // Asking for everything without a token must be refused, not served.
   const anonymousAll = await api("/products?all=true");
@@ -406,7 +437,11 @@ test("?all=true does not leak unpublished drafts to anonymous callers", async ()
   // With a token it is visible.
   const adminAll = await api("/products?all=true", { token });
   assert.equal(adminAll.status, 200);
-  assert.ok((adminAll.body as { name: string }[]).some((p) => p.name === "Gizli qaralama"));
+  assert.ok(
+    (adminAll.body as { name: string }[]).some(
+      (p) => p.name === "Gizli qaralama",
+    ),
+  );
 
   // Same rule on services.
   assert.equal((await api("/services?all=true")).status, 401);
@@ -426,7 +461,12 @@ test("an uploaded picture is stored in the database, not on the filesystem", asy
 
   // Deliberately larger than the 1600 px cap, so the resize has to do something.
   const original = await sharp({
-    create: { width: 2400, height: 1200, channels: 3, background: { r: 200, g: 40, b: 90 } },
+    create: {
+      width: 2400,
+      height: 1200,
+      channels: 3,
+      background: { r: 200, g: 40, b: 90 },
+    },
   })
     .jpeg()
     .toBuffer();
@@ -436,7 +476,11 @@ test("an uploaded picture is stored in the database, not on the filesystem", asy
   form.set("price", "12");
   form.set("category", "Test kateqoriya");
   form.set("shortDesc", "Qısa təsvir");
-  form.set("images", new Blob([new Uint8Array(original)], { type: "image/jpeg" }), "photo.jpg");
+  form.set(
+    "images",
+    new Blob([new Uint8Array(original)], { type: "image/jpeg" }),
+    "photo.jpg",
+  );
 
   const created = await fetch(`${baseUrl}/api/products`, {
     method: "POST",
@@ -444,7 +488,11 @@ test("an uploaded picture is stored in the database, not on the filesystem", asy
     body: form,
   });
   assert.equal(created.status, 201);
-  const product = (await created.json()) as { id: string; image: string; images: string[] };
+  const product = (await created.json()) as {
+    id: string;
+    image: string;
+    images: string[];
+  };
 
   // The URL keeps the shape every existing reader already understands.
   assert.equal(product.images.length, 1);
@@ -455,7 +503,14 @@ test("an uploaded picture is stored in the database, not on the filesystem", asy
 
   // Nothing was written to disk — that is the whole point.
   assert.equal(
-    fs.existsSync(pathModule.join(process.cwd(), "uploads", "products", pathModule.basename(url))),
+    fs.existsSync(
+      pathModule.join(
+        process.cwd(),
+        "uploads",
+        "products",
+        pathModule.basename(url),
+      ),
+    ),
     false,
     "the upload was written to the filesystem, where a restart would destroy it",
   );
@@ -471,13 +526,21 @@ test("an uploaded picture is stored in the database, not on the filesystem", asy
   const meta = await sharp(served).metadata();
   assert.equal(meta.format, "webp");
   assert.equal(meta.width, 1600);
-  assert.ok(served.length < original.length, "the stored image should be smaller than the upload");
+  assert.ok(
+    served.length < original.length,
+    "the stored image should be smaller than the upload",
+  );
 });
 
 test("an upload survives the process that received it", async () => {
   const sharp = (await import("sharp")).default;
   const png = await sharp({
-    create: { width: 32, height: 32, channels: 3, background: { r: 10, g: 20, b: 30 } },
+    create: {
+      width: 32,
+      height: 32,
+      channels: 3,
+      background: { r: 10, g: 20, b: 30 },
+    },
   })
     .png()
     .toBuffer();
@@ -487,7 +550,11 @@ test("an upload survives the process that received it", async () => {
   form.set("price", "5");
   form.set("category", "Test kateqoriya");
   form.set("shortDesc", "Qısa təsvir");
-  form.set("images", new Blob([new Uint8Array(png)], { type: "image/png" }), "tiny.png");
+  form.set(
+    "images",
+    new Blob([new Uint8Array(png)], { type: "image/png" }),
+    "tiny.png",
+  );
 
   const created = await fetch(`${baseUrl}/api/products`, {
     method: "POST",
@@ -515,7 +582,9 @@ test("an upload survives the process that received it", async () => {
 });
 
 test("an unknown upload path is a plain 404, not a crash", async () => {
-  const missing = await fetch(`${baseUrl}/uploads/products/8d1b7d2e-0000-4000-8000-000000000000.webp`);
+  const missing = await fetch(
+    `${baseUrl}/uploads/products/8d1b7d2e-0000-4000-8000-000000000000.webp`,
+  );
   assert.equal(missing.status, 404);
 
   const nonsense = await fetch(`${baseUrl}/uploads/products/not-an-id.webp`);

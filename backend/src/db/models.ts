@@ -22,12 +22,28 @@ function buildUpdate(
   return { clause: parts.join(", "), values };
 }
 
-export interface AdminRow { id: string; name: string; email: string; passwordHash: string; role: string; tokenVersion: number; }
+export interface AdminRow {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  role: string;
+  tokenVersion: number;
+}
 const ADMIN_SELECT = `SELECT id, name, email, password_hash AS "passwordHash", role, token_version AS "tokenVersion" FROM admins`;
 export const Admins = {
-  findByEmail(email: string) { return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE email = $1`, [email]); },
-  findById(id: string) { return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE id = $1`, [id]); },
-  async upsert(input: { name: string; email: string; passwordHash: string; role?: string }): Promise<AdminRow> {
+  findByEmail(email: string) {
+    return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE email = $1`, [email]);
+  },
+  findById(id: string) {
+    return queryOne<AdminRow>(`${ADMIN_SELECT} WHERE id = $1`, [id]);
+  },
+  async upsert(input: {
+    name: string;
+    email: string;
+    passwordHash: string;
+    role?: string;
+  }): Promise<AdminRow> {
     const existing = await this.findByEmail(input.email);
     if (existing) return existing;
     const rows = await query<AdminRow>(
@@ -38,18 +54,37 @@ export const Admins = {
     return rows[0];
   },
   async bumpTokenVersion(id: string): Promise<boolean> {
-    return (await execute("UPDATE admins SET token_version = token_version + 1, updated_at = now() WHERE id = $1", [id])) > 0;
+    return (
+      (await execute(
+        "UPDATE admins SET token_version = token_version + 1, updated_at = now() WHERE id = $1",
+        [id],
+      )) > 0
+    );
   },
 };
 
-export interface CategoryRow { id: string; name: string; type: "product" | "service"; }
+export interface CategoryRow {
+  id: string;
+  name: string;
+  type: "product" | "service";
+}
 const CATEGORY_COLUMNS = { name: "name", type: "type" };
 export const Categories = {
-  get(id: string) { return queryOne<CategoryRow>(`SELECT id, name, type FROM categories WHERE id = $1`, [id]); },
+  get(id: string) {
+    return queryOne<CategoryRow>(
+      `SELECT id, name, type FROM categories WHERE id = $1`,
+      [id],
+    );
+  },
   list(type?: string) {
     return type
-      ? query<CategoryRow>(`SELECT id, name, type FROM categories WHERE type = $1 ORDER BY name ASC`, [type])
-      : query<CategoryRow>(`SELECT id, name, type FROM categories ORDER BY name ASC`);
+      ? query<CategoryRow>(
+          `SELECT id, name, type FROM categories WHERE type = $1 ORDER BY name ASC`,
+          [type],
+        )
+      : query<CategoryRow>(
+          `SELECT id, name, type FROM categories ORDER BY name ASC`,
+        );
   },
   async create(input: { name: string; type: string }): Promise<CategoryRow> {
     const rows = await query<CategoryRow>(
@@ -58,7 +93,10 @@ export const Categories = {
     );
     return rows[0];
   },
-  async update(id: string, input: Partial<{ name: string; type: string }>): Promise<CategoryRow | null> {
+  async update(
+    id: string,
+    input: Partial<{ name: string; type: string }>,
+  ): Promise<CategoryRow | null> {
     const update = buildUpdate(input, CATEGORY_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<CategoryRow>(
@@ -73,29 +111,76 @@ export const Categories = {
 };
 
 /** `images` is a JSON-encoded ordered gallery; the controller hands callers the parsed array. */
-export interface ProductRow { id: string; name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; images: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
-export interface ProductInput { name: string; price: number; category: string; shortDesc: string; fullDesc: string; image: string; images: string[]; status: string; }
+export interface ProductRow {
+  id: string;
+  name: string;
+  price: number;
+  category: string;
+  shortDesc: string;
+  fullDesc: string;
+  image: string;
+  images: string;
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ProductInput {
+  name: string;
+  price: number;
+  category: string;
+  shortDesc: string;
+  fullDesc: string;
+  image: string;
+  images: string[];
+  status: string;
+}
 const PRODUCT_FIELDS = `id, name, price, category, short_desc AS "shortDesc", full_desc AS "fullDesc", image, images, status, created_at AS "createdAt", updated_at AS "updatedAt"`;
 const PRODUCT_SELECT = `SELECT ${PRODUCT_FIELDS} FROM products`;
-const PRODUCT_COLUMNS = { name: "name", price: "price", category: "category", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", images: "images", status: "status" };
+const PRODUCT_COLUMNS = {
+  name: "name",
+  price: "price",
+  category: "category",
+  shortDesc: "short_desc",
+  fullDesc: "full_desc",
+  image: "image",
+  images: "images",
+  status: "status",
+};
 export const Products = {
   list(includeInactive = false) {
     return includeInactive
       ? query<ProductRow>(`${PRODUCT_SELECT} ORDER BY created_at DESC`)
-      : query<ProductRow>(`${PRODUCT_SELECT} WHERE status = 'active' ORDER BY created_at DESC`);
+      : query<ProductRow>(
+          `${PRODUCT_SELECT} WHERE status = 'active' ORDER BY created_at DESC`,
+        );
   },
-  get(id: string) { return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1`, [id]); },
+  get(id: string) {
+    return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1`, [id]);
+  },
   async create(input: ProductInput): Promise<ProductRow> {
     const rows = await query<ProductRow>(
       `INSERT INTO products (name, price, category, short_desc, full_desc, image, images, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${PRODUCT_FIELDS}`,
-      [input.name, input.price, input.category, input.shortDesc, input.fullDesc, input.image, JSON.stringify(input.images), input.status],
+      [
+        input.name,
+        input.price,
+        input.category,
+        input.shortDesc,
+        input.fullDesc,
+        input.image,
+        JSON.stringify(input.images),
+        input.status,
+      ],
     );
     return rows[0];
   },
-  async update(id: string, input: Partial<ProductInput>): Promise<ProductRow | null> {
+  async update(
+    id: string,
+    input: Partial<ProductInput>,
+  ): Promise<ProductRow | null> {
     const normalized: Record<string, unknown> = { ...input };
-    if (input.images !== undefined) normalized.images = JSON.stringify(input.images);
+    if (input.images !== undefined)
+      normalized.images = JSON.stringify(input.images);
     const update = buildUpdate(normalized, PRODUCT_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<ProductRow>(
@@ -115,32 +200,86 @@ export const Products = {
     return row?.count ?? 0;
   },
   renameCategory(from: string, to: string): Promise<number> {
-    return execute(`UPDATE products SET category = $1, updated_at = now() WHERE category = $2`, [to, from]);
+    return execute(
+      `UPDATE products SET category = $1, updated_at = now() WHERE category = $2`,
+      [to, from],
+    );
   },
 };
 
-export interface ServiceRow { id: string; name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string; status: "active" | "inactive"; createdAt: string; updatedAt: string; }
+export interface ServiceRow {
+  id: string;
+  name: string;
+  description: string;
+  fullDesc: string;
+  image: string;
+  forWhom: string;
+  benefits: string;
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+}
 const SERVICE_FIELDS = `id, name, description, full_desc AS "fullDesc", image, for_whom AS "forWhom", benefits, status, created_at AS "createdAt", updated_at AS "updatedAt"`;
 const SERVICE_SELECT = `SELECT ${SERVICE_FIELDS} FROM services`;
-const SERVICE_COLUMNS = { name: "name", description: "description", fullDesc: "full_desc", image: "image", forWhom: "for_whom", benefits: "benefits", status: "status" };
+const SERVICE_COLUMNS = {
+  name: "name",
+  description: "description",
+  fullDesc: "full_desc",
+  image: "image",
+  forWhom: "for_whom",
+  benefits: "benefits",
+  status: "status",
+};
 export const Services = {
   list(includeInactive = false) {
     return includeInactive
       ? query<ServiceRow>(`${SERVICE_SELECT} ORDER BY created_at DESC`)
-      : query<ServiceRow>(`${SERVICE_SELECT} WHERE status = 'active' ORDER BY created_at DESC`);
+      : query<ServiceRow>(
+          `${SERVICE_SELECT} WHERE status = 'active' ORDER BY created_at DESC`,
+        );
   },
-  get(id: string) { return queryOne<ServiceRow>(`${SERVICE_SELECT} WHERE id = $1`, [id]); },
-  async create(input: { name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: string }): Promise<ServiceRow> {
+  get(id: string) {
+    return queryOne<ServiceRow>(`${SERVICE_SELECT} WHERE id = $1`, [id]);
+  },
+  async create(input: {
+    name: string;
+    description: string;
+    fullDesc: string;
+    image: string;
+    forWhom: string;
+    benefits: string[];
+    status: string;
+  }): Promise<ServiceRow> {
     const rows = await query<ServiceRow>(
       `INSERT INTO services (name, description, full_desc, image, for_whom, benefits, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${SERVICE_FIELDS}`,
-      [input.name, input.description, input.fullDesc, input.image, input.forWhom, JSON.stringify(input.benefits), input.status],
+      [
+        input.name,
+        input.description,
+        input.fullDesc,
+        input.image,
+        input.forWhom,
+        JSON.stringify(input.benefits),
+        input.status,
+      ],
     );
     return rows[0];
   },
-  async update(id: string, input: Partial<{ name: string; description: string; fullDesc: string; image: string; forWhom: string; benefits: string[]; status: string }>): Promise<ServiceRow | null> {
+  async update(
+    id: string,
+    input: Partial<{
+      name: string;
+      description: string;
+      fullDesc: string;
+      image: string;
+      forWhom: string;
+      benefits: string[];
+      status: string;
+    }>,
+  ): Promise<ServiceRow | null> {
     const normalized: Record<string, unknown> = { ...input };
-    if (input.benefits !== undefined) normalized.benefits = JSON.stringify(input.benefits);
+    if (input.benefits !== undefined)
+      normalized.benefits = JSON.stringify(input.benefits);
     const update = buildUpdate(normalized, SERVICE_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<ServiceRow>(
@@ -154,26 +293,62 @@ export const Services = {
   },
 };
 
-export interface EventRow { id: string; title: string; date: string; location: string; shortDesc: string; fullDesc: string; image: string; status: "upcoming" | "past"; createdAt: string; updatedAt: string; }
+export interface EventRow {
+  id: string;
+  title: string;
+  date: string;
+  location: string;
+  shortDesc: string;
+  fullDesc: string;
+  image: string;
+  status: "upcoming" | "past";
+  createdAt: string;
+  updatedAt: string;
+}
 const EVENT_FIELDS = `id, title, date, location, short_desc AS "shortDesc", full_desc AS "fullDesc", image, status, created_at AS "createdAt", updated_at AS "updatedAt"`;
 const EVENT_SELECT = `SELECT ${EVENT_FIELDS} FROM events`;
-const EVENT_COLUMNS = { title: "title", date: "date", location: "location", shortDesc: "short_desc", fullDesc: "full_desc", image: "image", status: "status" };
+const EVENT_COLUMNS = {
+  title: "title",
+  date: "date",
+  location: "location",
+  shortDesc: "short_desc",
+  fullDesc: "full_desc",
+  image: "image",
+  status: "status",
+};
 export const Events = {
   list(status?: string) {
     return status
-      ? query<EventRow>(`${EVENT_SELECT} WHERE status = $1 ORDER BY date ASC`, [status])
+      ? query<EventRow>(`${EVENT_SELECT} WHERE status = $1 ORDER BY date ASC`, [
+          status,
+        ])
       : query<EventRow>(`${EVENT_SELECT} ORDER BY date ASC`);
   },
-  get(id: string) { return queryOne<EventRow>(`${EVENT_SELECT} WHERE id = $1`, [id]); },
-  async create(input: Omit<EventRow, "id" | "createdAt" | "updatedAt">): Promise<EventRow> {
+  get(id: string) {
+    return queryOne<EventRow>(`${EVENT_SELECT} WHERE id = $1`, [id]);
+  },
+  async create(
+    input: Omit<EventRow, "id" | "createdAt" | "updatedAt">,
+  ): Promise<EventRow> {
     const rows = await query<EventRow>(
       `INSERT INTO events (title, date, location, short_desc, full_desc, image, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${EVENT_FIELDS}`,
-      [input.title, input.date, input.location, input.shortDesc, input.fullDesc, input.image, input.status],
+      [
+        input.title,
+        input.date,
+        input.location,
+        input.shortDesc,
+        input.fullDesc,
+        input.image,
+        input.status,
+      ],
     );
     return rows[0];
   },
-  async update(id: string, input: Partial<Omit<EventRow, "id" | "createdAt" | "updatedAt">>): Promise<EventRow | null> {
+  async update(
+    id: string,
+    input: Partial<Omit<EventRow, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<EventRow | null> {
     const update = buildUpdate(input as Record<string, unknown>, EVENT_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<EventRow>(
@@ -187,10 +362,23 @@ export const Events = {
   },
 };
 
-export interface SiteContentRow { heroHeadline: string; heroSubtext: string; aboutIntro: string; mission: string; phone: string; email: string; instagram: string; address: string; }
+export interface SiteContentRow {
+  heroHeadline: string;
+  heroSubtext: string;
+  aboutIntro: string;
+  mission: string;
+  phone: string;
+  email: string;
+  instagram: string;
+  address: string;
+}
 const CONTENT_FIELDS = `hero_headline AS "heroHeadline", hero_subtext AS "heroSubtext", about_intro AS "aboutIntro", mission, phone, email, instagram, address`;
 export const SiteContent = {
-  get() { return queryOne<SiteContentRow>(`SELECT ${CONTENT_FIELDS} FROM site_content WHERE id = 'site'`); },
+  get() {
+    return queryOne<SiteContentRow>(
+      `SELECT ${CONTENT_FIELDS} FROM site_content WHERE id = 'site'`,
+    );
+  },
   async upsert(input: SiteContentRow): Promise<SiteContentRow> {
     const rows = await query<SiteContentRow>(
       `INSERT INTO site_content (id, hero_headline, hero_subtext, about_intro, mission, phone, email, instagram, address, updated_at)
@@ -206,7 +394,16 @@ export const SiteContent = {
          address       = EXCLUDED.address,
          updated_at    = now()
        RETURNING ${CONTENT_FIELDS}`,
-      [input.heroHeadline, input.heroSubtext, input.aboutIntro, input.mission, input.phone, input.email, input.instagram, input.address],
+      [
+        input.heroHeadline,
+        input.heroSubtext,
+        input.aboutIntro,
+        input.mission,
+        input.phone,
+        input.email,
+        input.instagram,
+        input.address,
+      ],
     );
     return rows[0];
   },
@@ -234,14 +431,29 @@ export const SiteContent = {
            address       = EXCLUDED.address,
            updated_at    = now()
          RETURNING ${CONTENT_FIELDS}`,
-        [merged.heroHeadline, merged.heroSubtext, merged.aboutIntro, merged.mission, merged.phone, merged.email, merged.instagram, merged.address],
+        [
+          merged.heroHeadline,
+          merged.heroSubtext,
+          merged.aboutIntro,
+          merged.mission,
+          merged.phone,
+          merged.email,
+          merged.instagram,
+          merged.address,
+        ],
       );
       return rows.rows[0];
     });
   },
 };
 
-export interface ContactMessageRow { id: string; name: string; phone: string; message: string; createdAt: string; }
+export interface ContactMessageRow {
+  id: string;
+  name: string;
+  phone: string;
+  message: string;
+  createdAt: string;
+}
 export const ContactMessages = {
   list(page: number, pageSize: number) {
     return query<ContactMessageRow>(
@@ -254,10 +466,16 @@ export const ContactMessages = {
     );
   },
   async count(): Promise<number> {
-    const row = await queryOne<{ count: number }>("SELECT COUNT(*)::int AS count FROM contact_messages WHERE deleted_at IS NULL");
+    const row = await queryOne<{ count: number }>(
+      "SELECT COUNT(*)::int AS count FROM contact_messages WHERE deleted_at IS NULL",
+    );
     return row?.count ?? 0;
   },
-  async create(input: { name: string; phone: string; message: string }): Promise<ContactMessageRow> {
+  async create(input: {
+    name: string;
+    phone: string;
+    message: string;
+  }): Promise<ContactMessageRow> {
     const rows = await query<ContactMessageRow>(
       `INSERT INTO contact_messages (name, phone, message) VALUES ($1, $2, $3)
        RETURNING id, name, phone, message, created_at AS "createdAt"`,
@@ -266,7 +484,12 @@ export const ContactMessages = {
     return rows[0];
   },
   async remove(id: string): Promise<boolean> {
-    return (await execute("UPDATE contact_messages SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL", [id])) > 0;
+    return (
+      (await execute(
+        "UPDATE contact_messages SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL",
+        [id],
+      )) > 0
+    );
   },
 };
 
@@ -279,7 +502,11 @@ export const ContactMessages = {
  */
 export type UploadKind = "products" | "services" | "events";
 export const Uploads = {
-  async create(input: { kind: UploadKind; mime: string; bytes: Buffer }): Promise<string> {
+  async create(input: {
+    kind: UploadKind;
+    mime: string;
+    bytes: Buffer;
+  }): Promise<string> {
     const rows = await query<{ id: string }>(
       `INSERT INTO uploads (kind, mime, byte_size, bytes) VALUES ($1, $2, $3, $4) RETURNING id`,
       [input.kind, input.mime, input.bytes.byteLength, input.bytes],
