@@ -41,16 +41,14 @@ if (process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    // The SPA is served from this same origin, so the default CSP (which allows
-    // only 'self') would block the Google Fonts stylesheet and the remote
-    // imagery the site content links to. Everything else stays locked down.
+    // The SPA uses Tailwind classes rather than inline styles. Seed data still
+    // references images.unsplash.com, so that host is explicitly allowlisted.
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        "img-src": ["'self'", "data:", "https:"],
+        "img-src": ["'self'", "data:", "https://images.unsplash.com"],
         "style-src": [
           "'self'",
-          "'unsafe-inline'",
           "https://fonts.googleapis.com",
         ],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
