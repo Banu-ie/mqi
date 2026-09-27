@@ -243,10 +243,18 @@ export const SiteContent = {
 
 export interface ContactMessageRow { id: string; name: string; phone: string; message: string; createdAt: string; }
 export const ContactMessages = {
-  list() {
+  list(page: number, pageSize: number) {
     return query<ContactMessageRow>(
-      `SELECT id, name, phone, message, created_at AS "createdAt" FROM contact_messages ORDER BY created_at DESC`,
+      `SELECT id, name, phone, message, created_at AS "createdAt"
+       FROM contact_messages
+       ORDER BY created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [pageSize, (page - 1) * pageSize],
     );
+  },
+  async count(): Promise<number> {
+    const row = await queryOne<{ count: number }>("SELECT COUNT(*)::int AS count FROM contact_messages");
+    return row?.count ?? 0;
   },
   async create(input: { name: string; phone: string; message: string }): Promise<ContactMessageRow> {
     const rows = await query<ContactMessageRow>(
@@ -255,6 +263,9 @@ export const ContactMessages = {
       [input.name, input.phone, input.message],
     );
     return rows[0];
+  },
+  async remove(id: string): Promise<boolean> {
+    return (await execute("DELETE FROM contact_messages WHERE id = $1", [id])) > 0;
   },
 };
 

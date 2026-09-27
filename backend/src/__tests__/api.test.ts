@@ -355,7 +355,7 @@ test("contact messages are public to submit and private to read", async () => {
 
   const authorized = await api("/contact", { token });
   assert.equal(authorized.status, 200);
-  assert.equal((authorized.body as unknown[]).length, 1);
+  assert.equal((authorized.body as { items: unknown[] }).items.length, 1);
 });
 
 test("unknown api routes return a json 404", async () => {

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import MqiLogo from "../branding/MqiLogo";
-import { listContactMessages } from "../../api/contact";
+import { countContactMessages } from "../../api/contact";
 
 const navItems = [
   {
@@ -73,7 +73,7 @@ export default function AdminLayout({ children }: Props) {
   const [messageCount, setMessageCount] = useState(0);
 
   useEffect(() => {
-    listContactMessages().then((messages) => setMessageCount(messages.length)).catch(() => setMessageCount(0));
+    countContactMessages().then(({ count }) => setMessageCount(count)).catch(() => setMessageCount(0));
   }, []);
 
   const handleLogout = () => {
