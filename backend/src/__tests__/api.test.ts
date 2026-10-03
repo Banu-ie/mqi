@@ -218,9 +218,9 @@ test("product create/read/update/delete round-trips", async () => {
 });
 
 test("a product keeps an ordered gallery and a cover that follows it", async () => {
-  const first = "https://example.com/one.jpg";
-  const second = "https://example.com/two.jpg";
-  const third = "https://example.com/three.jpg";
+  const first = "https://images.unsplash.com/one.jpg";
+  const second = "https://images.unsplash.com/two.jpg";
+  const third = "https://images.unsplash.com/three.jpg";
 
   const created = await api("/products", {
     method: "POST",
@@ -272,7 +272,7 @@ test("a product keeps an ordered gallery and a cover that follows it", async () 
 });
 
 test("a single-image product still reads back as a one-entry gallery", async () => {
-  const only = "https://example.com/solo.jpg";
+  const only = "https://images.unsplash.com/solo.jpg";
   const created = await api("/products", {
     method: "POST",
     token,
@@ -299,7 +299,7 @@ test("a single-image product still reads back as a one-entry gallery", async () 
 test("a gallery beyond the cap is rejected with 400", async () => {
   const tooMany = Array.from(
     { length: 11 },
-    (_, i) => `https://example.com/${i}.jpg`,
+    (_, i) => `https://images.unsplash.com/${i}.jpg`,
   );
   const res = await api("/products", {
     method: "POST",

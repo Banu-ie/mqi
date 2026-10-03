@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { Services } from "../db/models";
 import { storeUpload } from "../lib/imageStore";
+import { imageRef } from "../lib/imageRef";
 
 const serviceSchema = z.object({
   name: z
@@ -15,16 +16,7 @@ const serviceSchema = z.object({
     .min(1, "Qısa təsvir tələb olunur.")
     .max(2_000, "Qısa təsvir çox uzundur."),
   fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
-  image: z
-    .string()
-    .max(2048, "Şəkil ünvanı çox uzundur.")
-    .refine(
-      (value) =>
-        value === "" ||
-        value.startsWith("/uploads/") ||
-        /^https?:\/\//i.test(value),
-      "Şəkil düzgün deyil.",
-    ),
+  image: imageRef,
   forWhom: z.string().max(1_000, "Auditoriya təsviri çox uzundur.").default(""),
   benefits: z.preprocess(
     (value) =>
@@ -76,7 +68,7 @@ export async function getServices(req: Request, res: Response) {
   );
 }
 export async function getServiceById(req: Request, res: Response) {
-  const service = serialize(await Services.get(req.params.id));
+  const service = serialize(await Services.getActive(req.params.id));
   if (!service) return res.status(404).json({ error: "Xidmət tapılmadı." });
   return res.json(service);
 }

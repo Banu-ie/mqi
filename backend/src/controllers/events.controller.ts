@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import { Events } from "../db/models";
 import { storeUpload } from "../lib/imageStore";
+import { imageRef } from "../lib/imageRef";
 
 const isValidDate = (value: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -44,16 +45,7 @@ const eventSchema = z.object({
 
   fullDesc: z.string().max(10_000, "Tam təsvir çox uzundur.").default(""),
 
-  image: z
-    .string()
-    .max(2048, "Şəkil ünvanı çox uzundur.")
-    .refine(
-      (value) =>
-        value === "" ||
-        value.startsWith("/uploads/") ||
-        /^https?:\/\//i.test(value),
-      "Şəkil düzgün deyil.",
-    ),
+  image: imageRef,
 
   status: z.enum(["upcoming", "past"]).default("upcoming"),
 });

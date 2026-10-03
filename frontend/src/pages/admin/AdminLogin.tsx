@@ -56,7 +56,7 @@ export default function AdminLogin() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@mqicma.az"
+                placeholder="Email ünvanınız"
                 className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] text-[#1A2540] placeholder-[#6B7A99] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 focus:border-[#3B6FE0] transition-all"
               />
             </div>

@@ -7,7 +7,7 @@ import {
   type EventInput,
 } from "../../api/events";
 import type { Event } from "../../api/types";
-import { ApiError } from "../../api/client";
+import { ApiError, resolveMediaUrl } from "../../api/client";
 import ImageFileField from "../../components/ui/ImageFileField";
 
 type FormErrors = {
@@ -628,7 +628,7 @@ export default function AdminEvents() {
                         <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
                           {e.image && (
                             <img
-                              src={e.image}
+                              src={resolveMediaUrl(e.image)}
                               alt={e.title}
                               className="w-full h-full object-cover"
                             />

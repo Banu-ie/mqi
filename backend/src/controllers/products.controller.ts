@@ -3,17 +3,7 @@ import { z } from "zod";
 import { Products, type ProductRow } from "../db/models";
 import { MAX_PRODUCT_IMAGES } from "../middleware/upload";
 import { storeUpload } from "../lib/imageStore";
-
-const imageRef = z
-  .string()
-  .max(2048, "Şəkil ünvanı çox uzundur.")
-  .refine(
-    (value) =>
-      value === "" ||
-      value.startsWith("/uploads/") ||
-      /^https?:\/\//i.test(value),
-    "Şəkil düzgün deyil.",
-  );
+import { imageRef } from "../lib/imageRef";
 
 /**
  * A gallery arrives as a form field, so it can reach us three ways: a JSON
@@ -43,15 +33,21 @@ const productSchema = z.object({
     .trim()
     .min(1, "Məhsul adı tələb olunur.")
     .max(200, "Məhsul adı çox uzundur."),
-  price: z.coerce
-    .number()
-    .finite()
-    .nonnegative("Qiymət mənfi ola bilməz.")
-    .max(1_000_000, "Qiymət çox yüksəkdir.")
-    .multipleOf(
-      0.01,
-      "Qiymət ən çox iki rəqəmli qəpik dəqiqliyində olmalıdır.",
-    ),
+  price: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : value,
+    z
+      .number()
+      .finite()
+      .nonnegative("Qiymət mənfi ola bilməz.")
+      .max(1_000_000, "Qiymət çox yüksəkdir.")
+      .multipleOf(
+        0.01,
+        "Qiymət ən çox iki rəqəmli qəpik dəqiqliyində olmalıdır.",
+      ),
+  ),
   category: z
     .string()
     .trim()
@@ -157,7 +153,7 @@ export async function getProducts(req: Request, res: Response) {
   );
 }
 export async function getProductById(req: Request, res: Response) {
-  const product = serialize(await Products.get(req.params.id));
+  const product = serialize(await Products.getActive(req.params.id));
   if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
   return res.json(product);
 }

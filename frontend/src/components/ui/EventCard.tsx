@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { Event } from "../../api/types";
+import { resolveMediaUrl } from "../../api/client";
 
 interface Props {
   event: Event;
@@ -15,7 +16,7 @@ export default function EventCard({ event }: Props) {
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-[#E4E9F4] group">
       <div className="relative overflow-hidden h-48 bg-[#F0F4FE]">
         <img
-          src={event.image}
+          src={resolveMediaUrl(event.image)}
           alt={event.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />

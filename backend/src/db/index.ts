@@ -230,10 +230,16 @@ export async function runMigrations(): Promise<string[]> {
         `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "${SCHEMA}" TO ${role}`,
       );
       await client.query(
+        `REVOKE DELETE ON TABLE "${SCHEMA}".admins FROM ${role}`,
+      );
+      await client.query(
         `REVOKE ALL ON TABLE "${SCHEMA}".schema_migrations FROM ${role}`,
       );
       await client.query(
         `ALTER DEFAULT PRIVILEGES IN SCHEMA "${SCHEMA}" GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${role}`,
+      );
+      await client.query(
+        `ALTER DEFAULT PRIVILEGES IN SCHEMA "${SCHEMA}" REVOKE DELETE ON TABLES FROM ${role}`,
       );
     }
   } finally {

@@ -123,10 +123,11 @@ async function main() {
     !adminEmail ||
     !adminPassword ||
     adminPassword === "REDACTED" ||
-    adminPassword === "replace-with-a-unique-password"
+    adminPassword === "replace-with-a-unique-password" ||
+    adminPassword.length < 16
   ) {
     throw new Error(
-      "SEED_ADMIN_EMAIL and a unique SEED_ADMIN_PASSWORD are required; default credentials are not allowed.",
+      "SEED_ADMIN_EMAIL and a unique SEED_ADMIN_PASSWORD of at least 16 characters are required; placeholders and weak credentials are not allowed.",
     );
   }
   const passwordHash = await bcrypt.hash(adminPassword, 12);
@@ -316,7 +317,7 @@ async function main() {
   }
 
   console.log("Seed complete.");
-  console.log(`Admin account ensured: ${adminEmail}`);
+  console.log("Admin account ensured.");
   });
 }
 

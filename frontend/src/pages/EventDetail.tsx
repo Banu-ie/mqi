@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getEvent } from "../api/events";
-import { ApiError } from "../api/client";
+import { ApiError, resolveMediaUrl } from "../api/client";
 import type { Event } from "../api/types";
 import { ErrorBanner, PageSpinner } from "../components/ui/StatusStates";
 
@@ -48,7 +48,7 @@ export default function EventDetail() {
           {/* Image */}
           <div className="relative h-72 lg:h-96 bg-[#F0F4FE]">
             <img
-              src={event.image}
+              src={resolveMediaUrl(event.image)}
               alt={event.title}
               className="w-full h-full object-cover"
             />

@@ -10,7 +10,9 @@ export const API_BASE_URL =
 // Uploaded images are served from the backend root, not under /api. With the
 // same-origin fallback this correctly resolves to a root-relative path.
 export const resolveMediaUrl = (value: string) =>
-  value.startsWith("/") ? `${API_BASE_URL.replace(/\/api\/?$/, "")}${value}` : value;
+  value.startsWith("/uploads/")
+    ? `${API_BASE_URL.replace(/\/api\/?$/, "")}${value}`
+    : value;
 const LEGACY_TOKEN_KEY = "mqicma_admin_token";
 const SESSION_KEY = "mqicma_admin_session";
 const ACTIVITY_KEY = "mqicma_admin_last_activity";

@@ -110,7 +110,7 @@ Backend (`backend/.env`; templates in `backend/.env.example` and
 | `CORS_ORIGIN`                              | no       | Comma-separated allowlist. Unnecessary in a single-origin deployment.                           |
 | `TRUST_PROXY`                              | no       | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP.                   |
 | `PUBLIC_ORIGIN`                            | production | Canonical `https://` origin used to redirect HTTP requests. Set it to the deployed domain.       |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no       | Read by `npm run seed` only.                                                                    |
+| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no       | Read by `npm run seed` only; password must be unique and at least 16 characters.                 |
 | `SEED_RESET_CONFIRM`                      | no       | Required as `RESET_PRODUCTION_DATA` with `SEED_RESET=true` in production.                       |
 | `TEST_DATABASE_URL`                        | no       | Used by `npm test`. Defaults to `postgresql://127.0.0.1:5432/mqicma_test`.                      |
 
@@ -163,10 +163,10 @@ ALTER ROLE mqicma_app SET search_path TO mqicma;
 Set `DATABASE_URL` to the pooled connection for `mqicma_app`,
 `DATABASE_RUNTIME_ROLE=mqicma_app`, and `DATABASE_MIGRATION_URL` to the schema
 owner connection. The migration runner grants the runtime role CRUD rights only
-inside this application's schema, excludes `schema_migrations`, and sets
-matching default grants for future tables. Keep the owner URL in a migration
-job or release environment, not the long-running web service, where the host
-supports that split. Never grant the app login database-level `CREATE`, schema
+inside this application's schema, excludes `schema_migrations`, denies
+`DELETE` on `admins`, and sets matching default grants for future tables. Keep
+the owner URL in a migration job or release environment, not the long-running
+web service, where the host supports that split. Never grant the app login database-level `CREATE`, schema
 ownership, or superuser privileges. This site is single-tenant: its content is
 shared, and row-level access decisions remain at the authenticated API layer;
 PostgreSQL RLS cannot distinguish admins when every request uses the same DB
@@ -243,7 +243,7 @@ Public: `GET /api/health`, `GET /api/products`, `GET /api/products/:id`,
 `GET /api/events/:id`, `GET /api/categories`, `GET /api/content`,
 `POST /api/contact`.
 
-Requires a bearer token: every `POST`/`PUT`/`DELETE` on products, services,
+Requires the admin session cookie: every `POST`/`PUT`/`DELETE` on products, services,
 events and categories, plus `PUT /api/content`, `GET /api/contact`,
 `GET /api/auth/me`, and the `?all=true` form of the product and service lists
 (which returns unpublished rows).

@@ -28,8 +28,10 @@ export async function createCategory(req: Request, res: Response) {
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   try {
     return res.status(201).json(await Categories.create(parsed.data));
-  } catch {
-    return res.status(409).json({ error: "Bu kateqoriya artıq mövcuddur." });
+  } catch (error) {
+    if ((error as { code?: string })?.code === "23505")
+      return res.status(409).json({ error: "Bu kateqoriya artıq mövcuddur." });
+    throw error;
   }
 }
 
@@ -86,8 +88,10 @@ export async function updateCategory(req: Request, res: Response) {
     if (!category)
       return res.status(404).json({ error: "Kateqoriya tapılmadı." });
     return res.json(category);
-  } catch {
-    return res.status(409).json({ error: "Bu kateqoriya artıq mövcuddur." });
+  } catch (error) {
+    if ((error as { code?: string })?.code === "23505")
+      return res.status(409).json({ error: "Bu kateqoriya artıq mövcuddur." });
+    throw error;
   }
 }
 

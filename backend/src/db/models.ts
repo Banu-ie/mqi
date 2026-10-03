@@ -188,6 +188,12 @@ export const Products = {
   get(id: string) {
     return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1`, [id]);
   },
+  getActive(id: string) {
+    return queryOne<ProductRow>(
+      `${PRODUCT_SELECT} WHERE id = $1 AND status = 'active'`,
+      [id],
+    );
+  },
   async create(input: ProductInput): Promise<ProductRow> {
     const rows = await query<ProductRow>(
       `INSERT INTO products (name, price, category, short_desc, full_desc, image, images, status)
@@ -271,6 +277,12 @@ export const Services = {
   },
   get(id: string) {
     return queryOne<ServiceRow>(`${SERVICE_SELECT} WHERE id = $1`, [id]);
+  },
+  getActive(id: string) {
+    return queryOne<ServiceRow>(
+      `${SERVICE_SELECT} WHERE id = $1 AND status = 'active'`,
+      [id],
+    );
   },
   async create(input: {
     name: string;

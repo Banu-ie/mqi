@@ -76,7 +76,14 @@ export const MAX_PRODUCT_IMAGES = 10;
 export const productImageUpload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024, files: MAX_PRODUCT_IMAGES + 1 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: MAX_PRODUCT_IMAGES + 1,
+    fields: 25,
+    parts: MAX_PRODUCT_IMAGES + 26,
+    fieldSize: 32 * 1024,
+    fieldNameSize: 100,
+  },
 }).fields([
   { name: "image", maxCount: 1 },
   { name: "images", maxCount: MAX_PRODUCT_IMAGES },
@@ -84,10 +91,24 @@ export const productImageUpload = multer({
 export const serviceImageUpload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    fields: 25,
+    parts: 26,
+    fieldSize: 32 * 1024,
+    fieldNameSize: 100,
+  },
 }).single("image");
 export const eventImageUpload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    fields: 25,
+    parts: 26,
+    fieldSize: 32 * 1024,
+    fieldNameSize: 100,
+  },
 }).single("image");
