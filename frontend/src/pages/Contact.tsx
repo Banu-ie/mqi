@@ -3,6 +3,9 @@ import { sendContactMessage } from "../api/contact";
 import { getContent } from "../api/content";
 import { ApiError } from "../api/client";
 import type { SiteContent } from "../api/types";
+import Turnstile from "../components/Turnstile";
+
+const captchaConfigured = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
@@ -10,6 +13,7 @@ export default function Contact() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const phonePattern = /^(?:\+994|00994|0)(?:10|12|18|20|21|22|23|24|25|26|33|35|36|50|51|55|60|70|77|99)\d{7}$/;
 
@@ -36,7 +40,7 @@ export default function Contact() {
     setErrors({});
     setSubmitError(null);
     setSubmitting(true);
-    try { await sendContactMessage(form); setSuccess(true); setForm({ name: "", phone: "", message: "" }); }
+    try { await sendContactMessage({ ...form, captchaToken: captchaToken ?? undefined }); setSuccess(true); setForm({ name: "", phone: "", message: "" }); }
     catch (err) { setSubmitError(err instanceof ApiError ? err.message : "Mesaj göndərilə bilmədi."); }
     finally { setSubmitting(false); }
   };
@@ -203,9 +207,10 @@ export default function Contact() {
                     />
                     {errors.message && <p className="mt-1.5 text-red-500 text-xs">{errors.message}</p>}
                   </div>
+                  <Turnstile onToken={setCaptchaToken} />
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || (captchaConfigured && !captchaToken)}
                     className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all"
                   >
                     {submitting ? "Göndərilir..." : "Göndər"}

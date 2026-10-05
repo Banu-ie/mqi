@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { Products, type ProductRow } from "../db/models";
+import { AuditLogs, Products, type ProductRow } from "../db/models";
+import type { AuthedRequest } from "../middleware/requireAuth";
 import { MAX_PRODUCT_IMAGES } from "../middleware/upload";
 import { storeUpload } from "../lib/imageStore";
 import { imageRef } from "../lib/imageRef";
@@ -157,16 +158,18 @@ export async function getProductById(req: Request, res: Response) {
   if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
   return res.json(product);
 }
-export async function createProduct(req: Request, res: Response) {
+export async function createProduct(req: AuthedRequest, res: Response) {
   const gallery = (await resolveGallery(req)) ?? { images: [], image: "" };
   const parsed = productSchema.safeParse({ ...req.body, ...gallery });
   if (!parsed.success)
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  return res.status(201).json(serialize(await Products.create(parsed.data)));
+  const product = await Products.create(parsed.data);
+  await AuditLogs.record(req.admin!.sub, "create", "products", product.id);
+  return res.status(201).json(serialize(product));
 }
-export async function updateProduct(req: Request, res: Response) {
+export async function updateProduct(req: AuthedRequest, res: Response) {
   const gallery = await resolveGallery(req);
   const patch: Record<string, unknown> = { ...req.body };
   delete patch.image;
@@ -180,10 +183,12 @@ export async function updateProduct(req: Request, res: Response) {
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   const product = serialize(await Products.update(req.params.id, parsed.data));
   if (!product) return res.status(404).json({ error: "Məhsul tapılmadı." });
+  await AuditLogs.record(req.admin!.sub, "update", "products", req.params.id);
   return res.json(product);
 }
-export async function deleteProduct(req: Request, res: Response) {
+export async function deleteProduct(req: AuthedRequest, res: Response) {
   if (!(await Products.remove(req.params.id)))
     return res.status(404).json({ error: "Məhsul tapılmadı." });
+  await AuditLogs.record(req.admin!.sub, "soft_delete", "products", req.params.id);
   return res.status(204).send();
 }

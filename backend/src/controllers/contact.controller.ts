@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ContactMessages } from "../db/models";
 import type { AuthedRequest } from "../middleware/requireAuth";
 import { logger } from "../lib/logger";
+import { verifyTurnstile } from "../lib/turnstile";
 const phonePattern =
   /^(?:\+994|00994|0)(?:10|12|18|20|21|22|23|24|25|26|33|35|36|50|51|55|60|70|77|99)\d{7}$/;
 const messageSchema = z.object({
@@ -25,6 +26,7 @@ const messageSchema = z.object({
     .trim()
     .min(1, "Mesaj tələb olunur.")
     .max(10_000, "Mesaj çox uzundur."),
+  captchaToken: z.string().max(2048).optional(),
 });
 export async function createContact(req: Request, res: Response) {
   const parsed = messageSchema.safeParse(req.body);
@@ -32,6 +34,8 @@ export async function createContact(req: Request, res: Response) {
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
+  if (!(await verifyTurnstile(parsed.data.captchaToken, req)))
+    return res.status(400).json({ error: "CAPTCHA yoxlaması tamamlanmayıb. Yenidən cəhd edin." });
   return res.status(201).json(await ContactMessages.create(parsed.data));
 }
 function pagination(req: Request) {

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { Services } from "../db/models";
+import { AuditLogs, Services } from "../db/models";
+import type { AuthedRequest } from "../middleware/requireAuth";
 import { storeUpload } from "../lib/imageStore";
 import { imageRef } from "../lib/imageRef";
 
@@ -72,15 +73,17 @@ export async function getServiceById(req: Request, res: Response) {
   if (!service) return res.status(404).json({ error: "Xidmət tapılmadı." });
   return res.json(service);
 }
-export async function createService(req: Request, res: Response) {
+export async function createService(req: AuthedRequest, res: Response) {
   const parsed = serviceSchema.safeParse(await input(req, true));
   if (!parsed.success)
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  return res.status(201).json(serialize(await Services.create(parsed.data)));
+  const service = await Services.create(parsed.data);
+  await AuditLogs.record(req.admin!.sub, "create", "services", service.id);
+  return res.status(201).json(serialize(service));
 }
-export async function updateService(req: Request, res: Response) {
+export async function updateService(req: AuthedRequest, res: Response) {
   const parsed = serviceSchema.partial().safeParse(await input(req, false));
   if (!parsed.success)
     return res
@@ -88,10 +91,12 @@ export async function updateService(req: Request, res: Response) {
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   const updated = await Services.update(req.params.id, parsed.data);
   if (!updated) return res.status(404).json({ error: "Xidmət tapılmadı." });
+  await AuditLogs.record(req.admin!.sub, "update", "services", req.params.id);
   return res.json(serialize(updated));
 }
-export async function deleteService(req: Request, res: Response) {
+export async function deleteService(req: AuthedRequest, res: Response) {
   if (!(await Services.remove(req.params.id)))
     return res.status(404).json({ error: "Xidmət tapılmadı." });
+  await AuditLogs.record(req.admin!.sub, "soft_delete", "services", req.params.id);
   return res.status(204).send();
 }

@@ -5,6 +5,7 @@ import { Admins, AdminSessions } from "../db/models";
 import { signAdminToken } from "../lib/auth";
 import type { AuthedRequest } from "../middleware/requireAuth";
 import { randomUUID } from "node:crypto";
+import { verifyTurnstile } from "../lib/turnstile";
 import {
   ADMIN_COOKIE,
   ADMIN_COOKIE_OPTIONS,
@@ -13,6 +14,7 @@ import {
 const loginSchema = z.object({
   email: z.string().email().max(320),
   password: z.string().min(1).max(1024),
+  captchaToken: z.string().max(2048).optional(),
 });
 const DUMMY_PASSWORD_HASH =
   "$2b$12$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy";
@@ -20,6 +22,8 @@ export async function login(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success)
     return res.status(400).json({ error: "Email və şifrə tələb olunur." });
+  if (!(await verifyTurnstile(parsed.data.captchaToken, req)))
+    return res.status(400).json({ error: "CAPTCHA yoxlaması tamamlanmayıb. Yenidən cəhd edin." });
   const admin = await Admins.findByEmail(parsed.data.email);
   const passwordHash = admin?.passwordHash ?? DUMMY_PASSWORD_HASH;
   const passwordMatches = await bcrypt.compare(

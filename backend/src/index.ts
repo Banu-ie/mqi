@@ -20,6 +20,10 @@ import { uploadsRouter } from "./routes/uploads";
 import { logger } from "./lib/logger";
 import { requestId } from "./middleware/requestId";
 import { PostgresRateLimitStore } from "./lib/postgresRateLimitStore";
+import { ContactMessages } from "./db/models";
+import { getAuditLog } from "./controllers/audit.controller";
+import { requireAdmin } from "./middleware/requireAuth";
+import { asyncHandler } from "./middleware/asyncHandler";
 
 const app = express();
 app.use(requestId);
@@ -61,9 +65,11 @@ app.use(
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         "img-src": ["'self'", "data:", "https://images.unsplash.com"],
+        "script-src": ["'self'", "https://challenges.cloudflare.com"],
+        "frame-src": ["https://challenges.cloudflare.com"],
+        "connect-src": ["'self'", "https://challenges.cloudflare.com"],
         "style-src": ["'self'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-        "connect-src": ["'self'"],
         "frame-ancestors": ["'none'"],
       },
     },
@@ -80,20 +86,26 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "100kb" }));
-// Uploaded images live in the database (see migration 003), because this
-// instance's filesystem does not survive a restart. The static mount stays in
-// front of them only for local checkouts that still hold files under
-// backend/uploads from before the move; on the deployed instance that directory
-// is empty, so every request falls straight through to the database.
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-app.use("/uploads", uploadsRouter);
-
 const rateLimitMessage = (message: string) => ({
   windowMs: 15 * 60 * 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: message },
 });
+// Uploaded images live in the database (see migration 003), because this
+// instance's filesystem does not survive a restart. The static mount stays in
+// front of them only for local checkouts that still hold files under
+// backend/uploads from before the move; on the deployed instance that directory
+// is empty, so every request falls straight through to the database.
+const uploadLimiter = rateLimit({
+  store: new PostgresRateLimitStore("uploads"),
+  ...rateLimitMessage("Şəkillər çox tez-tez tələb olunur. Bir az sonra yenidən cəhd edin."),
+  windowMs: 60 * 1000,
+  limit: 120,
+});
+app.use("/uploads", uploadLimiter);
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", uploadsRouter);
 
 // Broad ceiling for the whole API, then tighter limits on the two endpoints an
 // abuser would actually target: credential stuffing on login and contact spam.
@@ -111,20 +123,6 @@ const loginLimiter = rateLimit({
   ),
   limit: 10,
 });
-const accountLoginLimiter = rateLimit({
-  store: new PostgresRateLimitStore("login-account"),
-  ...rateLimitMessage(
-    "Bu hesab üçün çox sayda giriş cəhdi oldu. 15 dəqiqə sonra yenidən cəhd edin.",
-  ),
-  limit: 5,
-  keyGenerator: (req) => {
-    const email =
-      typeof req.body?.email === "string"
-        ? req.body.email.trim().toLowerCase()
-        : "unknown";
-    return `account:${email}`;
-  },
-});
 const contactLimiter = rateLimit({
   store: new PostgresRateLimitStore("contact"),
   ...rateLimitMessage(
@@ -132,6 +130,13 @@ const contactLimiter = rateLimit({
   ),
   windowMs: 60 * 60 * 1000,
   limit: 5,
+});
+const globalContactLimiter = rateLimit({
+  store: new PostgresRateLimitStore("contact-global"),
+  ...rateLimitMessage("Hazırda çox sayda əlaqə mesajı qəbul olunur. Bir az sonra yenidən cəhd edin."),
+  windowMs: 60 * 60 * 1000,
+  limit: Number(process.env.CONTACT_GLOBAL_LIMIT) || 100,
+  keyGenerator: () => "all-visitors",
 });
 
 app.use("/api", apiLimiter);
@@ -149,9 +154,29 @@ if (process.env.NODE_ENV !== "production") {
   app.get("/api/docs.json", (_req, res) => res.json(swaggerSpec));
 }
 
-app.use("/api/auth/login", loginLimiter, accountLoginLimiter);
-app.post("/api/contact", contactLimiter);
+app.use("/api/auth/login", loginLimiter);
+app.post("/api/contact", contactLimiter, globalContactLimiter);
+// Public read responses are briefly cached by browsers and shared caches. Keep
+// authenticated/admin and personal contact endpoints out of shared caches.
+app.use("/api", (req, res, next) => {
+  if (req.method !== "GET") return next();
+  if (
+    req.path.startsWith("/auth") ||
+    req.path.startsWith("/contact") ||
+    req.path.startsWith("/audit-log")
+  ) {
+    res.setHeader("Cache-Control", "no-store");
+    return next();
+  }
+  if (req.query.all === "true") {
+    res.setHeader("Cache-Control", "private, no-store");
+    return next();
+  }
+  res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  next();
+});
 app.use("/api/auth", authRouter);
+app.get("/api/audit-log", requireAdmin, asyncHandler(getAuditLog));
 app.use("/api/products", productsRouter);
 app.use("/api/services", servicesRouter);
 app.use("/api/events", eventsRouter);
@@ -241,6 +266,20 @@ if (require.main === module) {
     // Migrations create the schema, so this can only be checked afterwards.
     .then(async (applied) => {
       await assertSchemaResolution();
+      const contactRetentionDays = Math.max(
+        1,
+        Number(process.env.CONTACT_RETENTION_DAYS) || 90,
+      );
+      const purgeOldContactMessages = () =>
+        ContactMessages.purgeSoftDeleted(contactRetentionDays).catch((error) =>
+          logger.error(error, "Failed to purge expired contact messages"),
+        );
+      await purgeOldContactMessages();
+      const contactPurgeTimer = setInterval(
+        () => void purgeOldContactMessages(),
+        24 * 60 * 60 * 1000,
+      );
+      contactPurgeTimer.unref();
       console.log(`Database schema: ${SCHEMA}`);
       if (applied.length)
         console.log(`Applied migrations: ${applied.join(", ")}`);

@@ -3,7 +3,7 @@ import * as authApi from "../api/auth";
 import { beginAdminSession, clearAdminSession, hasActiveSession, recordAdminActivity } from "../api/client";
 import type { Admin } from "../api/types";
 
-interface AuthContextValue { admin: Admin | null; isLoading: boolean; login: (email: string, password: string) => Promise<void>; logout: () => void; }
+interface AuthContextValue { admin: Admin | null; isLoading: boolean; login: (email: string, password: string, captchaToken?: string) => Promise<void>; logout: () => void; }
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.clearInterval(timer);
     };
   }, [admin]);
-  const login = async (email: string, password: string) => { const result = await authApi.login(email, password); beginAdminSession(); setAdmin(result.admin); };
+  const login = async (email: string, password: string, captchaToken?: string) => { const result = await authApi.login(email, password, captchaToken); beginAdminSession(); setAdmin(result.admin); };
   const logout = () => { void authApi.logout().catch(() => undefined); clearAdminSession(); setAdmin(null); };
   return <AuthContext.Provider value={{ admin, isLoading, login, logout }}>{children}</AuthContext.Provider>;
 }

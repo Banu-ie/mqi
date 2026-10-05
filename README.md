@@ -109,6 +109,12 @@ Backend (`backend/.env`; templates in `backend/.env.example` and
 | `PORT`                                     | no       | Default `4000`.                                                                                 |
 | `CORS_ORIGIN`                              | no       | Comma-separated allowlist. Unnecessary in a single-origin deployment.                           |
 | `TRUST_PROXY`                              | no       | Set `"true"` behind a hosting proxy so rate limiting sees the real client IP.                   |
+| `CONTACT_GLOBAL_LIMIT`                     | no       | Public contact submissions allowed globally per hour; default `100`, in addition to `5` per IP. |
+| `CONTACT_RETENTION_DAYS`                   | no       | Days soft-deleted contact messages are retained before daily purge; default `90`.               |
+| `TURNSTILE_SECRET_KEY`                     | no       | Cloudflare Turnstile server secret. When set, login/contact require a valid challenge token.     |
+| `BACKUP_S3_BUCKET`                         | backup   | Dedicated S3 Object Lock bucket for the independent backup script.                               |
+| `BACKUP_S3_PREFIX`                         | no       | Backup object prefix; default `mqicma`.                                                          |
+| `BACKUP_RETENTION_DAYS`                    | no       | Object Lock compliance retention; default `365`.                                                |
 | `PUBLIC_ORIGIN`                            | production | Canonical `https://` origin used to redirect HTTP requests. Set it to the deployed domain.       |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | no       | Read by `npm run seed` only; password must be unique and at least 16 characters.                 |
 | `SEED_RESET_CONFIRM`                      | no       | Required as `RESET_PRODUCTION_DATA` with `SEED_RESET=true` in production.                       |
@@ -119,6 +125,7 @@ Frontend (`frontend/.env`, template in `frontend/.env.example`):
 | Variable       | Required | Notes                                                                                                                                           |
 | -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `VITE_API_URL` | no       | Full API base URL including `/api`. Baked in at build time. Leave unset for a single-origin deployment — the app then calls same-origin `/api`. |
+| `VITE_TURNSTILE_SITE_KEY` | no | Public Cloudflare Turnstile site key. Set alongside the backend secret to enable CAPTCHA on login and contact forms. |
 
 Everything prefixed `VITE_` ships inside the JS bundle — never put a secret there.
 
@@ -142,7 +149,7 @@ colliding with anything else already in it.
   operation is intentional and approved.
 - **Tables**: `admins`, `categories`, `products`, `services`, `events`,
   `site_content`, `contact_messages`, `uploads`, `rate_limit_hits`,
-  `admin_sessions`, plus indexes on the columns the API filters and sorts on.
+  `admin_sessions`, `audit_logs`, plus indexes on the columns the API filters and sorts on.
 
 ### Database roles
 
@@ -178,6 +185,13 @@ database URLs, then set `RUN_MIGRATIONS=false` on the web service and omit
 and default `search_path` provisioned as above. The default `RUN_MIGRATIONS=true`
 keeps the single-login development setup convenient.
 
+For the Render web service, set `DATABASE_URL` to the pooled runtime-role URL,
+`DATABASE_RUNTIME_ROLE=mqicma_app`, and `RUN_MIGRATIONS=false`. Run the release
+migration command with the runtime URL, owner `DATABASE_MIGRATION_URL`, and the
+same `DATABASE_RUNTIME_ROLE`, then execute `npm run migrate:prod`. Keep the
+owner URL only in that release/migration environment; never add it to the
+long-running web service.
+
 ### Backups, recovery targets, and restore procedure
 
 Backup retention and point-in-time recovery are controlled by the database
@@ -188,6 +202,29 @@ to an actively monitored address. Recovery objectives for this service are
 **RPO ≤ 24 hours** and **RTO ≤ 4 hours**. Confirm the selected plan can meet
 those targets; if it cannot, record the actual achievable targets and get the
 service owner to accept them.
+
+For a second, independent immutable copy, create a dedicated S3 bucket with
+Object Lock enabled at bucket creation, versioning enabled, and a retention
+period approved by the service owner. The repository's GitHub Actions workflow
+runs `npm run backup:immutable` daily at 02:17 UTC. Before enabling it, add the
+`BACKUP_DATABASE_URL` and `BACKUP_AWS_ROLE_ARN` GitHub secrets, the
+`BACKUP_AWS_REGION` and `BACKUP_S3_BUCKET` repository variables, and an AWS OIDC
+trust/policy restricted to this repository's workflow. Grant only the S3
+permissions needed to add locked objects. The script uploads custom-format
+dumps in S3 **COMPLIANCE** mode and stores a SHA-256 checksum in object
+metadata. Keep the bucket in a separate account or provider from Neon, alert on
+failed/missing daily uploads, and perform a restore drill from the S3 copy.
+Creating the bucket, configuring credentials and alerts, and proving a restore
+still require account-side setup.
+
+Contact messages are soft-deleted and hidden immediately. The backend purges
+soft-deleted rows after `CONTACT_RETENTION_DAYS` (90 by default); choose a value
+that matches the organization's approved retention policy. Login rate limits
+are IP-based to avoid locking out an account by targeting its email. Turnstile
+is enabled by setting both `TURNSTILE_SECRET_KEY` on the backend and
+`VITE_TURNSTILE_SITE_KEY` in the frontend build environment.
+The admin-only `GET /api/audit-log` endpoint returns paginated catalogue
+create, update, and soft-delete events with the acting admin and entity ID.
 
 Restore runbook:
 

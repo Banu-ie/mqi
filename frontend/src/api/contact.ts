@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { ContactMessage, ContactPage } from "./types";
-export type ContactInput = Omit<ContactMessage, "id" | "createdAt">;
+export type ContactInput = Omit<ContactMessage, "id" | "createdAt"> & { captchaToken?: string };
 export const sendContactMessage = (input: ContactInput) =>
   apiRequest<ContactMessage>("/contact", { method: "POST", body: input });
 export const listContactMessages = (page = 1) =>

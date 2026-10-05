@@ -3,12 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { ApiError } from "../../api/client";
 import MqiLogo from "../../components/branding/MqiLogo";
+import Turnstile from "../../components/Turnstile";
+
+const captchaConfigured = Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY);
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -20,7 +24,7 @@ export default function AdminLogin() {
 
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, captchaToken ?? undefined);
       navigate("/admin/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Email və ya şifrə yanlışdır.");
@@ -77,9 +81,11 @@ export default function AdminLogin() {
               </button>
             </div>
 
+            <Turnstile onToken={setCaptchaToken} />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (captchaConfigured && !captchaToken)}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-[#ffffff] font-semibold shadow-lg hover:shadow-xl hover:opacity-90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? (

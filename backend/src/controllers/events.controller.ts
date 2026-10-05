@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
-import { Events } from "../db/models";
+import { AuditLogs, Events } from "../db/models";
+import type { AuthedRequest } from "../middleware/requireAuth";
 import { storeUpload } from "../lib/imageStore";
 import { imageRef } from "../lib/imageRef";
 
@@ -75,7 +76,7 @@ export async function getEventById(req: Request, res: Response) {
   if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
   return res.json(event);
 }
-export async function createEvent(req: Request, res: Response) {
+export async function createEvent(req: AuthedRequest, res: Response) {
   const parsed = eventSchema.safeParse({
     ...req.body,
     image: await imageValue(req),
@@ -84,9 +85,11 @@ export async function createEvent(req: Request, res: Response) {
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
-  return res.status(201).json(await Events.create(parsed.data));
+  const event = await Events.create(parsed.data);
+  await AuditLogs.record(req.admin!.sub, "create", "events", event.id);
+  return res.status(201).json(event);
 }
-export async function updateEvent(req: Request, res: Response) {
+export async function updateEvent(req: AuthedRequest, res: Response) {
   const uploaded = req.file ? await imageValue(req) : undefined;
   const parsed = eventSchema.partial().safeParse({
     ...req.body,
@@ -98,10 +101,12 @@ export async function updateEvent(req: Request, res: Response) {
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   const event = await Events.update(req.params.id, parsed.data);
   if (!event) return res.status(404).json({ error: "Tədbir tapılmadı." });
+  await AuditLogs.record(req.admin!.sub, "update", "events", req.params.id);
   return res.json(event);
 }
-export async function deleteEvent(req: Request, res: Response) {
+export async function deleteEvent(req: AuthedRequest, res: Response) {
   if (!(await Events.remove(req.params.id)))
     return res.status(404).json({ error: "Tədbir tapılmadı." });
+  await AuditLogs.record(req.admin!.sub, "soft_delete", "events", req.params.id);
   return res.status(204).send();
 }

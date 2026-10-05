@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { withTransaction } from "../db";
-import { Categories, Products } from "../db/models";
+import { AuditLogs, Categories, Products } from "../db/models";
+import type { AuthedRequest } from "../middleware/requireAuth";
 
 const categorySchema = z.object({
   name: z
@@ -20,14 +21,16 @@ export async function getCategories(req: Request, res: Response) {
   return res.json(await Categories.list(type));
 }
 
-export async function createCategory(req: Request, res: Response) {
+export async function createCategory(req: AuthedRequest, res: Response) {
   const parsed = categorySchema.safeParse(req.body);
   if (!parsed.success)
     return res
       .status(400)
       .json({ error: parsed.error.issues[0]?.message ?? "Yanlış məlumat." });
   try {
-    return res.status(201).json(await Categories.create(parsed.data));
+    const category = await Categories.create(parsed.data);
+    await AuditLogs.record(req.admin!.sub, "create", "categories", category.id);
+    return res.status(201).json(category);
   } catch (error) {
     if ((error as { code?: string })?.code === "23505")
       return res.status(409).json({ error: "Bu kateqoriya artıq mövcuddur." });
@@ -35,7 +38,7 @@ export async function createCategory(req: Request, res: Response) {
   }
 }
 
-export async function updateCategory(req: Request, res: Response) {
+export async function updateCategory(req: AuthedRequest, res: Response) {
   const parsed = categorySchema.partial().safeParse(req.body);
   if (!parsed.success)
     return res
@@ -73,7 +76,7 @@ export async function updateCategory(req: Request, res: Response) {
           name: string;
           type: "product" | "service";
         }>(
-          `UPDATE categories SET ${set.join(", ")} WHERE id = $${values.length} RETURNING id, name, type`,
+          `UPDATE categories SET ${set.join(", ")} WHERE id = $${values.length} AND deleted_at IS NULL RETURNING id, name, type`,
           values,
         )
       ).rows[0];
@@ -87,6 +90,7 @@ export async function updateCategory(req: Request, res: Response) {
     });
     if (!category)
       return res.status(404).json({ error: "Kateqoriya tapılmadı." });
+    await AuditLogs.record(req.admin!.sub, "update", "categories", req.params.id);
     return res.json(category);
   } catch (error) {
     if ((error as { code?: string })?.code === "23505")
@@ -95,7 +99,7 @@ export async function updateCategory(req: Request, res: Response) {
   }
 }
 
-export async function deleteCategory(req: Request, res: Response) {
+export async function deleteCategory(req: AuthedRequest, res: Response) {
   const existing = await Categories.get(req.params.id);
   if (!existing)
     return res.status(404).json({ error: "Kateqoriya tapılmadı." });
@@ -113,5 +117,6 @@ export async function deleteCategory(req: Request, res: Response) {
   }
 
   await Categories.remove(req.params.id);
+  await AuditLogs.record(req.admin!.sub, "soft_delete", "categories", req.params.id);
   return res.status(204).send();
 }

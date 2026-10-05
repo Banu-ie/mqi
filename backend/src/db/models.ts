@@ -103,18 +103,18 @@ const CATEGORY_COLUMNS = { name: "name", type: "type" };
 export const Categories = {
   get(id: string) {
     return queryOne<CategoryRow>(
-      `SELECT id, name, type FROM categories WHERE id = $1`,
+      `SELECT id, name, type FROM categories WHERE id = $1 AND deleted_at IS NULL`,
       [id],
     );
   },
   list(type?: string) {
     return type
       ? query<CategoryRow>(
-          `SELECT id, name, type FROM categories WHERE type = $1 ORDER BY name ASC`,
+          `SELECT id, name, type FROM categories WHERE type = $1 AND deleted_at IS NULL ORDER BY name ASC`,
           [type],
         )
       : query<CategoryRow>(
-          `SELECT id, name, type FROM categories ORDER BY name ASC`,
+          `SELECT id, name, type FROM categories WHERE deleted_at IS NULL ORDER BY name ASC`,
         );
   },
   async create(input: { name: string; type: string }): Promise<CategoryRow> {
@@ -131,13 +131,13 @@ export const Categories = {
     const update = buildUpdate(input, CATEGORY_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<CategoryRow>(
-      `UPDATE categories SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING id, name, type`,
+      `UPDATE categories SET ${update.clause} WHERE id = $${update.values.length + 1} AND deleted_at IS NULL RETURNING id, name, type`,
       [...update.values, id],
     );
     return rows[0] ?? null;
   },
   async remove(id: string): Promise<boolean> {
-    return (await execute(`DELETE FROM categories WHERE id = $1`, [id])) > 0;
+    return (await execute(`UPDATE categories SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`, [id])) > 0;
   },
 };
 
@@ -180,17 +180,17 @@ const PRODUCT_COLUMNS = {
 export const Products = {
   list(includeInactive = false) {
     return includeInactive
-      ? query<ProductRow>(`${PRODUCT_SELECT} ORDER BY created_at DESC`)
+      ? query<ProductRow>(`${PRODUCT_SELECT} WHERE deleted_at IS NULL ORDER BY created_at DESC`)
       : query<ProductRow>(
-          `${PRODUCT_SELECT} WHERE status = 'active' ORDER BY created_at DESC`,
+          `${PRODUCT_SELECT} WHERE status = 'active' AND deleted_at IS NULL ORDER BY created_at DESC`,
         );
   },
   get(id: string) {
-    return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1`, [id]);
+    return queryOne<ProductRow>(`${PRODUCT_SELECT} WHERE id = $1 AND deleted_at IS NULL`, [id]);
   },
   getActive(id: string) {
     return queryOne<ProductRow>(
-      `${PRODUCT_SELECT} WHERE id = $1 AND status = 'active'`,
+      `${PRODUCT_SELECT} WHERE id = $1 AND status = 'active' AND deleted_at IS NULL`,
       [id],
     );
   },
@@ -221,24 +221,24 @@ export const Products = {
     const update = buildUpdate(normalized, PRODUCT_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<ProductRow>(
-      `UPDATE products SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING ${PRODUCT_FIELDS}`,
+      `UPDATE products SET ${update.clause} WHERE id = $${update.values.length + 1} AND deleted_at IS NULL RETURNING ${PRODUCT_FIELDS}`,
       [...update.values, id],
     );
     return rows[0] ?? null;
   },
   async remove(id: string): Promise<boolean> {
-    return (await execute(`DELETE FROM products WHERE id = $1`, [id])) > 0;
+    return (await execute(`UPDATE products SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`, [id])) > 0;
   },
   async countByCategory(category: string): Promise<number> {
     const row = await queryOne<{ count: number }>(
-      `SELECT COUNT(*)::int AS count FROM products WHERE category = $1`,
+      `SELECT COUNT(*)::int AS count FROM products WHERE category = $1 AND deleted_at IS NULL`,
       [category],
     );
     return row?.count ?? 0;
   },
   renameCategory(from: string, to: string): Promise<number> {
     return execute(
-      `UPDATE products SET category = $1, updated_at = now() WHERE category = $2`,
+      `UPDATE products SET category = $1, updated_at = now() WHERE category = $2 AND deleted_at IS NULL`,
       [to, from],
     );
   },
@@ -270,17 +270,17 @@ const SERVICE_COLUMNS = {
 export const Services = {
   list(includeInactive = false) {
     return includeInactive
-      ? query<ServiceRow>(`${SERVICE_SELECT} ORDER BY created_at DESC`)
+      ? query<ServiceRow>(`${SERVICE_SELECT} WHERE deleted_at IS NULL ORDER BY created_at DESC`)
       : query<ServiceRow>(
-          `${SERVICE_SELECT} WHERE status = 'active' ORDER BY created_at DESC`,
+          `${SERVICE_SELECT} WHERE status = 'active' AND deleted_at IS NULL ORDER BY created_at DESC`,
         );
   },
   get(id: string) {
-    return queryOne<ServiceRow>(`${SERVICE_SELECT} WHERE id = $1`, [id]);
+    return queryOne<ServiceRow>(`${SERVICE_SELECT} WHERE id = $1 AND deleted_at IS NULL`, [id]);
   },
   getActive(id: string) {
     return queryOne<ServiceRow>(
-      `${SERVICE_SELECT} WHERE id = $1 AND status = 'active'`,
+      `${SERVICE_SELECT} WHERE id = $1 AND status = 'active' AND deleted_at IS NULL`,
       [id],
     );
   },
@@ -326,13 +326,13 @@ export const Services = {
     const update = buildUpdate(normalized, SERVICE_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<ServiceRow>(
-      `UPDATE services SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING ${SERVICE_FIELDS}`,
+      `UPDATE services SET ${update.clause} WHERE id = $${update.values.length + 1} AND deleted_at IS NULL RETURNING ${SERVICE_FIELDS}`,
       [...update.values, id],
     );
     return rows[0] ?? null;
   },
   async remove(id: string): Promise<boolean> {
-    return (await execute(`DELETE FROM services WHERE id = $1`, [id])) > 0;
+    return (await execute(`UPDATE services SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`, [id])) > 0;
   },
 };
 
@@ -362,13 +362,13 @@ const EVENT_COLUMNS = {
 export const Events = {
   list(status?: string) {
     return status
-      ? query<EventRow>(`${EVENT_SELECT} WHERE status = $1 ORDER BY date ASC`, [
+      ? query<EventRow>(`${EVENT_SELECT} WHERE status = $1 AND deleted_at IS NULL ORDER BY date ASC`, [
           status,
         ])
-      : query<EventRow>(`${EVENT_SELECT} ORDER BY date ASC`);
+      : query<EventRow>(`${EVENT_SELECT} WHERE deleted_at IS NULL ORDER BY date ASC`);
   },
   get(id: string) {
-    return queryOne<EventRow>(`${EVENT_SELECT} WHERE id = $1`, [id]);
+    return queryOne<EventRow>(`${EVENT_SELECT} WHERE id = $1 AND deleted_at IS NULL`, [id]);
   },
   async create(
     input: Omit<EventRow, "id" | "createdAt" | "updatedAt">,
@@ -395,13 +395,13 @@ export const Events = {
     const update = buildUpdate(input as Record<string, unknown>, EVENT_COLUMNS);
     if (!update) return (await this.get(id)) ?? null;
     const rows = await query<EventRow>(
-      `UPDATE events SET ${update.clause} WHERE id = $${update.values.length + 1} RETURNING ${EVENT_FIELDS}`,
+      `UPDATE events SET ${update.clause} WHERE id = $${update.values.length + 1} AND deleted_at IS NULL RETURNING ${EVENT_FIELDS}`,
       [...update.values, id],
     );
     return rows[0] ?? null;
   },
   async remove(id: string): Promise<boolean> {
-    return (await execute(`DELETE FROM events WHERE id = $1`, [id])) > 0;
+    return (await execute(`UPDATE events SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`, [id])) > 0;
   },
 };
 
@@ -533,6 +533,49 @@ export const ContactMessages = {
         [id],
       )) > 0
     );
+  },
+  async purgeSoftDeleted(retentionDays: number): Promise<number> {
+    return execute(
+      "DELETE FROM contact_messages WHERE deleted_at IS NOT NULL AND deleted_at < now() - ($1::int * INTERVAL '1 day')",
+      [retentionDays],
+    );
+  },
+};
+
+export const AuditLogs = {
+  async record(
+    adminId: string,
+    action: string,
+    entityTable: "categories" | "products" | "services" | "events",
+    entityId: string,
+  ): Promise<void> {
+    await execute(
+      `INSERT INTO audit_logs (actor_admin_id, action, entity_table, entity_id)
+       VALUES ($1, $2, $3, $4)`,
+      [adminId, action, entityTable, entityId],
+    );
+  },
+  list(page: number, pageSize: number) {
+    return query<{
+      id: string;
+      adminId: string | null;
+      action: string;
+      entityTable: string;
+      entityId: string;
+      createdAt: string;
+    }>(
+      `SELECT id, actor_admin_id AS "adminId", action,
+              entity_table AS "entityTable", entity_id AS "entityId",
+              created_at AS "createdAt"
+       FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`,
+      [pageSize, (page - 1) * pageSize],
+    );
+  },
+  async count(): Promise<number> {
+    const row = await queryOne<{ count: number }>(
+      "SELECT COUNT(*)::int AS count FROM audit_logs",
+    );
+    return row?.count ?? 0;
   },
 };
 
