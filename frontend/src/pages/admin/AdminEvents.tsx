@@ -9,6 +9,7 @@ import {
 import type { Event } from "../../api/types";
 import { ApiError, resolveMediaUrl } from "../../api/client";
 import ImageFileField from "../../components/ui/ImageFileField";
+import Select from "../../components/ui/Select";
 
 type FormErrors = {
   title?: string;
@@ -327,15 +328,17 @@ export default function AdminEvents() {
 
       {/* Add/Edit form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 z-40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-2xl my-8">
+        <div className="admin-modal-backdrop fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+          <div className="admin-modal-panel my-auto w-full max-w-2xl">
+            <div className="admin-modal-header">
             <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">
               {editId
                 ? "Tədbiri redaktə et"
                 : "Yeni tədbir əlavə et"}
             </h3>
+            </div>
 
-            <div className="space-y-4">
+            <div className="admin-modal-body space-y-5">
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">
@@ -393,28 +396,12 @@ export default function AdminEvents() {
                     Status *
                   </label>
 
-                  <select
+                  <Select
                     value={form.status}
-                    onChange={(e) =>
-                      updateField(
-                        "status",
-                        e.target.value
-                      )
-                    }
-                    className={`w-full px-4 py-3 rounded-xl border ${
-                      errors.status
-                        ? "border-red-400"
-                        : "border-[#E4E9F4]"
-                    } focus:outline-none bg-white`}
-                  >
-                    <option value="upcoming">
-                      Qarşıdan gələn
-                    </option>
-
-                    <option value="past">
-                      Keçirilmiş
-                    </option>
-                  </select>
+                    onChange={(status) => updateField("status", status)}
+                    options={[{ value: "upcoming", label: "Qarşıdan gələn" }, { value: "past", label: "Keçirilmiş" }]}
+                    className={errors.status ? "has-error" : ""}
+                  />
 
                   {errors.status && (
                     <p className="mt-1 text-xs text-red-500">
@@ -516,7 +503,7 @@ export default function AdminEvents() {
             </div>
 
             {/* Form buttons */}
-            <div className="flex gap-3 mt-6">
+            <div className="admin-modal-actions flex gap-3">
               <button
                 onClick={closeForm}
                 disabled={saving}
@@ -590,7 +577,8 @@ export default function AdminEvents() {
         </div>
       ) : (
         /* Events table */
-        <div className="bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden">
+        <>
+        <div className="hidden md:block bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -687,6 +675,32 @@ export default function AdminEvents() {
             </table>
           </div>
         </div>
+        <div className="md:hidden space-y-3">
+          {list.map((e) => (
+            <article key={e.id} className="admin-mobile-card">
+              <div className="flex items-start gap-3">
+                <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
+                  {e.image && <img src={resolveMediaUrl(e.image)} alt={e.title} className="w-full h-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-sm text-[#29233D] leading-snug">{e.title}</h3>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-3 text-xs">
+                    <div><span className="block text-[#9A92A8] mb-0.5">Tarix</span><span className="text-[#6F687D]">{formatDate(e.date)}</span></div>
+                    <div><span className="block text-[#9A92A8] mb-0.5">Yer</span><span className="text-[#6F687D] truncate block">{e.location}</span></div>
+                  </div>
+                  <span className={`admin-mobile-badge mt-3 ${e.status === "upcoming" ? "bg-[#cbeacf] text-[#49a455]" : "bg-gray-100 text-gray-600"}`}>
+                    {e.status === "upcoming" ? "Qarşıdan gələn" : "Keçirilmiş"}
+                  </span>
+                </div>
+              </div>
+              <div className="admin-mobile-actions">
+                <button onClick={() => openEdit(e)} className="flex-1 py-2.5 rounded-lg bg-[#FFF0F8] text-[#E9008C] text-xs font-semibold">Redaktə et</button>
+                <button onClick={() => setDeleteId(e.id)} disabled={deleting} className="flex-1 py-2.5 rounded-lg bg-red-50 text-red-500 text-xs font-semibold disabled:opacity-50">Sil</button>
+              </div>
+            </article>
+          ))}
+        </div>
+        </>
       )}
     </div>
   );

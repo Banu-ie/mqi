@@ -64,8 +64,8 @@ export default function Contact() {
         </svg>
       ),
       label: "Telefon",
-      value: content?.phone || "+994 XX XXX XX XX",
-      href: content?.phone ? `tel:${content.phone.replace(/\s+/g, "")}` : "tel:+994XXXXXXXXX",
+      value: content?.phone || "+994 50 855 18 73",
+      href: content?.phone ? `tel:${content.phone.replace(/\s+/g, "")}` : "tel:+994508551873",
       color: "from-[#3B6FE0] to-[#3B6FE0]",
     },
     {
@@ -75,8 +75,8 @@ export default function Contact() {
         </svg>
       ),
       label: "WhatsApp",
-      value: "+994 XX XXX XX XX",
-      href: "https://wa.me/994XXXXXXXXX",
+      value: "+994 50 855 18 73",
+      href: "https://wa.me/994508551873",
       color: "from-[#25D366] to-[#128C7E]",
     },
     {

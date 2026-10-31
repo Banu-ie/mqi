@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createCategory, deleteCategory, listCategories, updateCategory } from "../../api/categories";
 import type { Category } from "../../api/types";
 import { ApiError } from "../../api/client";
+import Select from "../../components/ui/Select";
 
 export default function AdminCategories() {
   const [list, setList] = useState<Category[]>([]);
@@ -68,14 +69,12 @@ export default function AdminCategories() {
             className="flex-1 min-w-48 px-4 py-2.5 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 focus:border-[#3B6FE0] text-sm"
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
-          <select
+          <Select
             value={newType}
-            onChange={(e) => setNewType(e.target.value as "product" | "service")}
-            className="px-4 py-2.5 rounded-xl border border-[#E4E9F4] focus:outline-none bg-white text-sm text-[#1A2540]"
-          >
-            <option value="product">Məhsul</option>
-            <option value="service">Xidmət</option>
-          </select>
+            onChange={(value) => setNewType(value as "product" | "service")}
+            options={[{ value: "product", label: "Məhsul" }, { value: "service", label: "Xidmət" }]}
+            className="category-type-select"
+          />
           <button onClick={handleAdd} className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white text-sm font-semibold hover:opacity-90">
             Əlavə et
           </button>

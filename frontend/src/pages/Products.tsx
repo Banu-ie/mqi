@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Select from "../components/ui/Select";
 import { listProducts } from "../api/products";
 import { listCategories } from "../api/categories";
 import { ApiError } from "../api/client";
@@ -240,33 +241,17 @@ export default function Products() {
 
                 {/* Sort */}
                 <div className="lg:w-64">
-                  <select
+                  <Select
                     value={sort}
-                    onChange={(e) =>
-                      setSort(e.target.value as SortOption)
-                    }
-                    className="w-full px-4 py-3.5 rounded-xl border border-[#E4E9F4] bg-white !text-[#1A2540] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 focus:border-[#3B6FE0] transition-all cursor-pointer"
-                  >
-                    <option value="default">
-                      Sıralama: standart
-                    </option>
-
-                    <option value="price-asc">
-                      Qiymət: aşağıdan yuxarı
-                    </option>
-
-                    <option value="price-desc">
-                      Qiymət: yuxarıdan aşağı
-                    </option>
-
-                    <option value="name-asc">
-                      Ad: A-dan Z-yə
-                    </option>
-
-                    <option value="name-desc">
-                      Ad: Z-dən A-ya
-                    </option>
-                  </select>
+                    onChange={(next) => setSort(next as SortOption)}
+                    options={[
+                      { value: "default", label: "Sıralama: standart" },
+                      { value: "price-asc", label: "Qiymət: aşağıdan yuxarı" },
+                      { value: "price-desc", label: "Qiymət: yuxarıdan aşağı" },
+                      { value: "name-asc", label: "Ad: A-dan Z-yə" },
+                      { value: "name-desc", label: "Ad: Z-dən A-ya" },
+                    ]}
+                  />
                 </div>
               </div>
 

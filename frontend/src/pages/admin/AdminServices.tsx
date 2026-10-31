@@ -3,6 +3,7 @@ import { createService, deleteService, listServices, updateService, type Service
 import type { Service } from "../../api/types";
 import { ApiError, resolveMediaUrl } from "../../api/client";
 import ImageFileField from "../../components/ui/ImageFileField";
+import Select from "../../components/ui/Select";
 
 export default function AdminServices() {
   const [list, setList] = useState<Service[]>([]);
@@ -63,10 +64,12 @@ export default function AdminServices() {
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 z-40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-2xl my-8">
+        <div className="admin-modal-backdrop fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+          <div className="admin-modal-panel my-auto w-full max-w-2xl">
+            <div className="admin-modal-header">
             <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">{editId ? "Xidməti redaktə et" : "Yeni xidmət əlavə et"}</h3>
-            <div className="space-y-4">
+            </div>
+            <div className="admin-modal-body space-y-5">
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Xidmət adı *</label>
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30" />
@@ -90,13 +93,14 @@ export default function AdminServices() {
               <ImageFileField value={form.image} file={form.imageFile} onChange={(imageFile) => setForm({ ...form, imageFile })} />
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Status</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as "active" | "inactive" })} className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none bg-white">
-                  <option value="active">Aktiv</option>
-                  <option value="inactive">Gizli</option>
-                </select>
+                <Select
+                  value={form.status}
+                  onChange={(status) => setForm({ ...form, status: status as "active" | "inactive" })}
+                  options={[{ value: "active", label: "Aktiv" }, { value: "inactive", label: "Gizli" }]}
+                />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="admin-modal-actions flex gap-3">
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-[#E4E9F4] text-[#6B7A99] font-medium">Ləğv et</button>
               <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#e0844c] to-[#c94cb0] text-white font-semibold disabled:opacity-60">{saving ? "Yadda saxlanılır..." : "Yadda saxla"}</button>
             </div>

@@ -4,6 +4,7 @@ import { listCategories } from "../../api/categories";
 import type { Category, Product } from "../../api/types";
 import { ApiError, resolveMediaUrl } from "../../api/client";
 import ProductImagesField from "../../components/ui/ProductImagesField";
+import Select from "../../components/ui/Select";
 
 type FormState = ProductInput;
 
@@ -107,13 +108,15 @@ export default function AdminProducts() {
 
       {/* Form modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/30 z-40 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-2xl my-8">
+        <div className="admin-modal-backdrop fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
+          <div className="admin-modal-panel my-auto w-full max-w-2xl">
+            <div className="admin-modal-header">
             <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">
               {editId ? "Məhsulu redaktə et" : "Yeni məhsul əlavə et"}
             </h3>
+            </div>
             {formError && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</p>}
-            <div className="space-y-4">
+            <div className="admin-modal-body space-y-5">
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Məhsul adı *</label>
                 <input
@@ -126,19 +129,11 @@ export default function AdminProducts() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-[#1A2540] mb-2">Kateqoriya</label>
-                  <select
+                  <Select
                     value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 bg-white"
-                  >
-                    {categories.length === 0 ? (
-                      <option value="">Kateqoriya yoxdur</option>
-                    ) : (
-                      categories.map((c) => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
-                      ))
-                    )}
-                  </select>
+                    onChange={(category) => setForm({ ...form, category })}
+                    options={categories.length === 0 ? [{ value: "", label: "Kateqoriya yoxdur" }] : categories.map((c) => ({ value: c.name, label: c.name }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#1A2540] mb-2">Qiymət (AZN)</label>
@@ -175,17 +170,14 @@ export default function AdminProducts() {
               />
               <div>
                 <label className="block text-sm font-medium text-[#1A2540] mb-2">Status</label>
-                <select
+                <Select
                   value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as "active" | "inactive" })}
-                  className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30 bg-white"
-                >
-                  <option value="active">Aktiv</option>
-                  <option value="inactive">Gizli</option>
-                </select>
+                  onChange={(status) => setForm({ ...form, status: status as "active" | "inactive" })}
+                  options={[{ value: "active", label: "Aktiv" }, { value: "inactive", label: "Gizli" }]}
+                />
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="admin-modal-actions flex gap-3">
               <button onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-[#E4E9F4] text-[#6B7A99] font-medium hover:bg-[#F8FAFF]">
                 Ləğv et
               </button>
@@ -222,7 +214,8 @@ export default function AdminProducts() {
           <p className="text-[#6B7A99] text-sm">Hələ məhsul yoxdur. "Məhsul əlavə et" düyməsi ilə ilkini əlavə edin.</p>
         </div>
       ) : (
-      <div className="bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden">
+      <>
+      <div className="hidden md:block bg-white rounded-2xl border border-[#E4E9F4] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -275,6 +268,33 @@ export default function AdminProducts() {
           </table>
         </div>
       </div>
+      <div className="md:hidden space-y-3">
+        {list.map((p) => (
+          <article key={p.id} className="admin-mobile-card">
+            <div className="flex items-start gap-3">
+              <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-[#F0F4FE]">
+                <img src={resolveMediaUrl(p.image)} alt={p.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-sm text-[#29233D] truncate">{p.name}</h3>
+                <p className="text-xs text-[#6F687D] mt-1 line-clamp-2">{p.shortDesc}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="admin-mobile-badge bg-[#FFF0F8] text-[#E9008C]">{p.category}</span>
+                  <span className="admin-mobile-badge bg-[#F6EEFF] text-[#7C5CFC]">{p.price} AZN</span>
+                  <span className={`admin-mobile-badge ${p.status === "active" ? "bg-[#cbeacf] text-[#49a455]" : "bg-gray-100 text-gray-600"}`}>
+                    {p.status === "active" ? "Aktiv" : "Gizli"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="admin-mobile-actions">
+              <button onClick={() => openEdit(p)} className="flex-1 py-2.5 rounded-lg bg-[#FFF0F8] text-[#E9008C] text-xs font-semibold">Redaktə et</button>
+              <button onClick={() => setDeleteId(p.id)} className="flex-1 py-2.5 rounded-lg bg-red-50 text-red-500 text-xs font-semibold">Sil</button>
+            </div>
+          </article>
+        ))}
+      </div>
+      </>
       )}
     </div>
   );
