@@ -32,6 +32,18 @@ function allowedOrigins(): Set<string> {
   );
 }
 
+function requestOrigin(req: Request): string | undefined {
+  const host = req.get("host");
+  if (!host) return undefined;
+  const forwardedProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || req.protocol;
+  try {
+    return new URL(`${protocol}://${host}`).origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface AuthedRequest extends Request {
   admin?: AdminTokenPayload;
 }
@@ -69,7 +81,10 @@ export async function requireAuth(
   let originIsAllowed = true;
   if (origin) {
     try {
-      originIsAllowed = allowedOrigins().has(new URL(origin).origin);
+      const normalizedOrigin = new URL(origin).origin;
+      originIsAllowed =
+        allowedOrigins().has(normalizedOrigin) ||
+        normalizedOrigin === requestOrigin(req);
     } catch {
       originIsAllowed = false;
     }

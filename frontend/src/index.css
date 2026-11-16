@@ -109,6 +109,7 @@ body {
 [class~="text-[#6B7A99]"] { color: #6F687D !important; }
 [class~="text-[#7C5CFC]"] { color: #A83DFF !important; }
 [class~="hover:text-[#7C5CFC]"]:hover { color: #A83DFF !important; }
+[class~="hover:text-white"]:hover { color: #FFFFFF !important; }
 [class~="to-[#3B6FE0]"] { --tw-gradient-to: #E9008C !important; }
 [class~="to-[#7C5CFC]"] { --tw-gradient-to: #A83DFF !important; }
 .group:hover [class~="group-hover:to-[#7C5CFC]"] { --tw-gradient-to: #A83DFF !important; }
@@ -302,6 +303,30 @@ input[type="file"]::file-selector-button {
   font-size: clamp(1.45rem, 3vw, 1.8rem);
 }
 
+.admin-modal-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #6F687D;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+.admin-modal-close:hover {
+  background: #FFF0F8;
+  color: #E9008C;
+}
+
+.admin-modal-close:focus-visible {
+  outline: 2px solid color-mix(in oklab, #E9008C 45%, transparent);
+  outline-offset: 2px;
+}
+
 .admin-modal-body {
   max-height: calc(100vh - 11rem);
   overflow-y: auto;
@@ -353,6 +378,7 @@ input[type="file"]::file-selector-button {
   .admin-modal-backdrop { padding: .75rem; }
   .admin-modal-panel { max-height: calc(100vh - 1.5rem); border-radius: 1.25rem; }
   .admin-modal-header { padding: 1.25rem 1.25rem 0; }
+  .admin-modal-close { top: 1rem; right: 1rem; }
   .admin-modal-body { max-height: calc(100vh - 9rem); padding: 1.25rem; }
   .admin-modal-actions { padding: .85rem 1.25rem 1.25rem; }
   .admin-modal-actions button { min-height: 46px; }

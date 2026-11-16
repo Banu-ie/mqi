@@ -6,7 +6,7 @@ import { ApiError, resolveMediaUrl } from "../../api/client";
 import ProductImagesField from "../../components/ui/ProductImagesField";
 import Select from "../../components/ui/Select";
 
-type FormState = ProductInput;
+type FormState = Omit<ProductInput, "price"> & { price: number | string };
 
 const emptyForm: FormState = {
   name: "",
@@ -62,11 +62,13 @@ export default function AdminProducts() {
   const handleSave = async () => {
     if (!form.name.trim()) { setFormError("Məhsul adı tələb olunur."); return; }
     if (!form.category.trim()) { setFormError("Kateqoriya tələb olunur."); return; }
-    if (!Number.isFinite(form.price) || form.price < 0) { setFormError("Qiymət 0 və ya daha böyük olmalıdır."); return; }
+    const price = form.price === "" ? NaN : Number(form.price);
+    if (!Number.isFinite(price) || price < 0) { setFormError("Qiymət 0 və ya daha böyük olmalıdır."); return; }
     if (!form.shortDesc.trim()) { setFormError("Qısa təsvir tələb olunur."); return; }
     setFormError(null);
     setSaving(true);
-    try { if (editId) { await updateProduct(editId, form); showToast("Məhsul uğurla yeniləndi."); } else { await createProduct(form); showToast("Məhsul uğurla əlavə edildi."); } await listProducts(true).then(setList); setShowForm(false); setEditId(null); }
+    const input = { ...form, price };
+    try { if (editId) { await updateProduct(editId, input); showToast("Məhsul uğurla yeniləndi."); } else { await createProduct(input); showToast("Məhsul uğurla əlavə edildi."); } await listProducts(true).then(setList); setShowForm(false); setEditId(null); }
     catch (err) { setError(err instanceof ApiError ? err.message : "Məhsul yadda saxlanılmadı."); }
     finally { setSaving(false); }
   };
@@ -109,11 +111,21 @@ export default function AdminProducts() {
       {/* Form modal */}
       {showForm && (
         <div className="admin-modal-backdrop fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
-          <div className="admin-modal-panel my-auto w-full max-w-2xl">
+          <div className="admin-modal-panel relative my-auto w-full max-w-2xl">
             <div className="admin-modal-header">
-            <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">
-              {editId ? "Məhsulu redaktə et" : "Yeni məhsul əlavə et"}
-            </h3>
+              <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6 pr-10">
+                {editId ? "Məhsulu redaktə et" : "Yeni məhsul əlavə et"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                aria-label="Kartı bağla"
+                className="admin-modal-close"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
             </div>
             {formError && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{formError}</p>}
             <div className="admin-modal-body space-y-5">
@@ -140,7 +152,9 @@ export default function AdminProducts() {
                   <input
                     type="number"
                     value={form.price}
-                    onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                    min="0"
+                    step="0.01"
+                    onChange={(e) => setForm({ ...form, price: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border border-[#E4E9F4] focus:outline-none focus:ring-2 focus:ring-[#3B6FE0]/30"
                   />
                 </div>
@@ -288,7 +302,7 @@ export default function AdminProducts() {
               </div>
             </div>
             <div className="admin-mobile-actions">
-              <button onClick={() => openEdit(p)} className="flex-1 py-2.5 rounded-lg bg-[#FFF0F8] text-[#E9008C] text-xs font-semibold">Redaktə et</button>
+              <button onClick={() => openEdit(p)} className="flex-1 py-2.5 rounded-lg bg-[#FFF0F8] text-[#E9008C] text-xs font-semibold hover:bg-[#E9008C] hover:text-white transition-colors">Redaktə et</button>
               <button onClick={() => setDeleteId(p.id)} className="flex-1 py-2.5 rounded-lg bg-red-50 text-red-500 text-xs font-semibold">Sil</button>
             </div>
           </article>

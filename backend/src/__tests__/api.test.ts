@@ -28,11 +28,17 @@ let token: string;
 
 async function api(
   routePath: string,
-  init: { method?: string; body?: unknown; token?: string } = {},
+  init: {
+    method?: string;
+    body?: unknown;
+    token?: string;
+    origin?: string;
+  } = {},
 ) {
   const headers: Record<string, string> = {};
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
   if (init.token) headers.Cookie = `mqicma_admin=${init.token}`;
+  if (init.origin) headers.Origin = init.origin;
   const response = await fetch(`${baseUrl}/api${routePath}`, {
     method: init.method ?? "GET",
     headers,
@@ -158,6 +164,14 @@ test("login succeeds and returns a usable token", async () => {
   token = cookie!.slice("mqicma_admin=".length);
 
   const me = await api("/auth/me", { token });
+  assert.equal(me.status, 200);
+});
+
+test("same-origin admin requests remain valid behind a custom domain", async () => {
+  const me = await api("/auth/me", {
+    token,
+    origin: baseUrl,
+  });
   assert.equal(me.status, 200);
 });
 

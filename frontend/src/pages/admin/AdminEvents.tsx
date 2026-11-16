@@ -329,13 +329,18 @@ export default function AdminEvents() {
       {/* Add/Edit form */}
       {showForm && (
         <div className="admin-modal-backdrop fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
-          <div className="admin-modal-panel my-auto w-full max-w-2xl">
+          <div className="admin-modal-panel relative my-auto w-full max-w-2xl">
             <div className="admin-modal-header">
-            <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">
-              {editId
-                ? "Tədbiri redaktə et"
-                : "Yeni tədbir əlavə et"}
-            </h3>
+              <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6 pr-10">
+                {editId
+                  ? "Tədbiri redaktə et"
+                  : "Yeni tədbir əlavə et"}
+              </h3>
+              <button type="button" onClick={() => setShowForm(false)} aria-label="Kartı bağla" className="admin-modal-close">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
             </div>
 
             <div className="admin-modal-body space-y-5">
@@ -694,7 +699,7 @@ export default function AdminEvents() {
                 </div>
               </div>
               <div className="admin-mobile-actions">
-                <button onClick={() => openEdit(e)} className="flex-1 py-2.5 rounded-lg bg-[#FFF0F8] text-[#E9008C] text-xs font-semibold">Redaktə et</button>
+                <button onClick={() => openEdit(e)} className="flex-1 py-2.5 rounded-lg bg-[#FFF0F8] text-[#E9008C] text-xs font-semibold hover:bg-[#E9008C] hover:text-white transition-colors">Redaktə et</button>
                 <button onClick={() => setDeleteId(e.id)} disabled={deleting} className="flex-1 py-2.5 rounded-lg bg-red-50 text-red-500 text-xs font-semibold disabled:opacity-50">Sil</button>
               </div>
             </article>

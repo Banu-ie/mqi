@@ -65,9 +65,14 @@ export default function AdminServices() {
 
       {showForm && (
         <div className="admin-modal-backdrop fixed inset-0 z-40 flex items-start justify-center overflow-y-auto p-4 sm:p-6">
-          <div className="admin-modal-panel my-auto w-full max-w-2xl">
+          <div className="admin-modal-panel relative my-auto w-full max-w-2xl">
             <div className="admin-modal-header">
-            <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6">{editId ? "Xidməti redaktə et" : "Yeni xidmət əlavə et"}</h3>
+              <h3 className="font-['DM_Serif_Display'] text-2xl text-[#1A2540] mb-6 pr-10">{editId ? "Xidməti redaktə et" : "Yeni xidmət əlavə et"}</h3>
+              <button type="button" onClick={() => setShowForm(false)} aria-label="Kartı bağla" className="admin-modal-close">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
             </div>
             <div className="admin-modal-body space-y-5">
               <div>
